@@ -1,0 +1,5 @@
+__pycache__
+.stylegan2-cache
+.vscode
+results
+venv

@@ -1,0 +1,1 @@
+python generators/stylegan2/run_generator.py generate-images --network=gdrive:networks/stylegan2-ffhq-config-f.pkl --seeds=1000-1010 --truncation-psi=0.5
