@@ -1,5 +1,6 @@
 __pycache__
 .stylegan2-cache
 .vscode
+_cudacache
 results
 venv
