@@ -61,8 +61,7 @@ def mix_images(
 
     print("Generating W vectors...")
     all_seeds = list(set(row_seeds + col_seeds))
-    all_z = np.stack(
-        [np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
+    all_z = np.stack([np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
     )  # [minibatch, component]
     all_w = Gs.components.mapping.run(all_z, None)  # [minibatch, layer, component]
     all_w = w_avg + (all_w - w_avg) * truncation_psi  # [minibatch, layer, component]

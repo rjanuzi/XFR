@@ -50,7 +50,7 @@ def lookup_imgs(root_folder=None) -> DataFrame:
 
 def read_imgs(
     img_paths: list = None,
-    resize_params: dict = dict(new_width=1024, new_height=1024),
+    target_size: tuple = (1024, 1024),
     normalize: bool = True,
 ) -> iterable(np.ndarray):
     """
@@ -61,13 +61,10 @@ def read_imgs(
     if img_paths == None:
         img_paths = lookup_imgs()["img_path"]
 
-    imgs = []
     for img_path in img_paths:
         img = Image.open(img_path)
-        if resize_params:
-            img = img.resize(
-                size=(resize_params["new_width"], resize_params["new_height"])
-            )
+        if target_size:
+            img = img.resize(size=target_size)
 
         if normalize:
             yield _normalize_img(np.array(img, dtype="float32"))
