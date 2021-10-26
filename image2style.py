@@ -2,9 +2,12 @@ from os import path
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.keras.applications.vgg16 import (VGG16,
-                                                        decode_predictions,
-                                                        preprocess_input)
+from tensorflow.core.util.event_pb2 import TaggedRunMetadata
+from tensorflow.python.keras.applications.vgg16 import (
+    VGG16,
+    decode_predictions,
+    preprocess_input,
+)
 from tensorflow.python.keras.metrics import mean_squared_error
 from tensorflow.python.keras.optimizers import Adam
 
@@ -57,11 +60,16 @@ def prepare_inputs(
     return ((x, y) for x in imgs for y in imgs if not np.array_equal(x, y))
 
 
-def load_pretrained_vgg16(include_top=True):
+def load_pretrained_vgg16(include_top=True, input_shape=(224, 224, 3)):
     """
     Loads a pre-trained VGG-16 model from Keras
     """
-    vgg_16_model = VGG16(include_top=include_top, weights="imagenet")
+    if include_top:
+        vgg_16_model = VGG16(include_top=include_top, weights="imagenet")
+    else:
+        vgg_16_model = VGG16(
+            include_top=include_top, weights="imagenet", input_shape=input_shape
+        )
     vgg_16_model.trainable = False
     return vgg_16_model
 
@@ -102,14 +110,22 @@ def gen_vgg16_perceptual_outputs(vgg16_model, img):
     """
     Pass the images trhough the VGG-16 model and return the perceptual outputs
     """
-    max_layers_to_forward = max(VGG16_PERCEPTUAL_LAYERS)
+    # max_layers_to_forward = max(VGG16_PERCEPTUAL_LAYERS)
+    # perceptual_outputs = []
+    # for idx, layer in enumerate(vgg16_model.layers):
+    #     if idx > max_layers_to_forward:
+    #         break
+    #     img = layer(img)
+    #     if idx in VGG16_PERCEPTUAL_LAYERS:
+    #         perceptual_outputs.append(img)
+
+    # return perceptual_outputs
+
+    # Dummy pass foward the layers
+    _ = vgg16_model(img)
     perceptual_outputs = []
-    for idx, layer in enumerate(vgg16_model.layers):
-        if idx > max_layers_to_forward:
-            break
-        img = layer(img)
-        if idx in VGG16_PERCEPTUAL_LAYERS:
-            perceptual_outputs.append(img)
+    for layer in VGG16_PERCEPTUAL_LAYERS:
+        perceptual_outputs.append(vgg16_model.layers[layer].output)
 
     return perceptual_outputs
 
@@ -140,7 +156,7 @@ def latent_opt_loss(
     # Calculate the MSE loss
     MSE = tf.reduce_mean(mean_squared_error(generated_img, target_img))
 
-    return (L_percept + MSE).eval()
+    return L_percept + MSE
 
 
 def optmize_latent_w(
@@ -157,41 +173,50 @@ def optmize_latent_w(
     # Initial w
     z = np.random.standard_normal(size=(1, 512))
     w = generator.components.mapping.run(z, None)
-    w = w_avg + (w - w_avg) * 1.0
+    w = w_avg + (w - w_avg) * truncation_psi
 
     # Initialize the looking latent vector
     vgg_target_img = preprocess_input(target_img[np.newaxis])
-    with tf.Session() as sess:
-        model = load_pretrained_vgg16()
-        target_perceptual_outputs = gen_vgg16_perceptual_outputs(model, vgg_target_img)
+    model = load_pretrained_vgg16()
+    target_perceptual_outputs = gen_vgg16_perceptual_outputs(model, vgg_target_img)
 
-        for step in range(steps):
-            # Synthesize the image
-            generated_img = synthesize_img(generator, w)
+    for step in range(steps):
+        # Synthesize the image
+        generated_img = synthesize_img(generator, w)
 
-            # Prepare img to calculate loss
-            vgg_generated_img = preprocess_input(generated_img)
+        # Prepare img to calculate loss
+        vgg_generated_img = preprocess_input(generated_img)
 
-            # Calculate
-            loss = loss_function(
-                model, vgg_generated_img, target_img, target_perceptual_outputs
-            )
+        # Calculate
+        loss = loss_function(
+            model, vgg_generated_img, target_img, target_perceptual_outputs
+        )
 
-            # TODO - Calculate Gradients
-            grads = tf.gradients(loss, w)
-            # TODO - Update w
-            optimizer.apply_gradients(zip(grads, w))
+        with tf.Session() as sess:
+            loss = sess.run(loss)
+
+        tf.print(loss)
+        # grads = tf.gradients(loss, w)
+
+        # optimizer.apply_gradients(zip(grads, w))
+        # optimizer.minimize(loss, w)
+
+    return w
 
 
-generator = load_stylegan_generator()
-w_avg = generator.get_var("dlatent_avg")
+normal_imgs = ds.lookup_imgs(poses=["normal"], person_names=["rjanuzi"])
+target_img = ds.read_img(
+    img_path=normal_imgs.iloc[0]["img_path"], target_size=(1024, 1024)
+)
+# w = optmize_latent_w(target_img=target_img)
 
-for _ in range(10):
-    z = np.random.standard_normal(size=(1, 512))
-    w = generator.components.mapping.run(z, None)
-    w = w_avg + (w - w_avg) * 1.0
-    img = synthesize_img(generator, w)
-    show_img(img[0])
+vgg_model = load_pretrained_vgg16(include_top=False, input_shape=(1024, 1024, 3))
+img = preprocess_input(target_img)
+
+perceptual_outputs = gen_vgg16_perceptual_outputs(vgg_model, target_img[np.newaxis])
+
+with tf.Session() as sess:
+    tf.print(perceptual_outputs[0])
 
 # if __name__ == "__main__":
 #     img_pairs = list(prepare_inputs(poses=["normal"], target_size=(224, 224)))

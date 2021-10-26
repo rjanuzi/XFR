@@ -8,6 +8,7 @@ import dataset as ds
 import dnnlib as dnnlib
 import dnnlib.tflib as tflib
 import generators.stylegan2.pretrained_networks as pretrained_networks
+from encoder.generator_model import Generator
 
 RESULTS_FOLDER = Path("results").joinpath(datetime.now().strftime("%Y%m%d-%H%M%S"))
 RESULTS_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -36,6 +37,35 @@ def prepare_inputs(person_names: list = None, poses: list = None) -> zip:
     return zip(imgs, imgs)
 
 
+def gen_img(
+    latent_w,
+    truncation_psi=1.0,
+    network_pkl="gdrive:networks/stylegan2-ffhq-config-f.pkl",
+):
+    """
+    Generate image for the latent data provided using StyleGAN 2.
+    """
+    Gs_syn_kwargs = dnnlib.EasyDict()
+    Gs_syn_kwargs.output_transform = dict(
+        func=tflib.convert_images_to_uint8, nchw_to_nhwc=True
+    )
+    Gs_syn_kwargs.randomize_noise = False
+    Gs_syn_kwargs.minibatch_size = 4
+
+    print('Loading networks from "%s"...' % network_pkl)
+    _, _, Gs = pretrained_networks.load_networks(network_pkl)
+
+    generator = Generator(Gs, 1, randomize_noise=False)
+    generator.set_dlatents(latent_w[np.newaxis])
+    batch_frames = generator.generate_images()
+    return Image.fromarray(batch_frames[0], "RGB")
+
+    # w_avg = Gs.get_var("dlatent_avg")
+    # latent_w = w_avg + (latent_w - w_avg) * truncation_psi
+    # image = Gs.components.synthesis.run(latent_w[np.newaxis], **Gs_syn_kwargs)[0]
+    # return Image.fromarray(image, "RGB")
+
+
 def mix_images(
     network_pkl,
     row_seeds,
@@ -61,7 +91,8 @@ def mix_images(
 
     print("Generating W vectors...")
     all_seeds = list(set(row_seeds + col_seeds))
-    all_z = np.stack([np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
+    all_z = np.stack(
+        [np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
     )  # [minibatch, component]
     all_w = Gs.components.mapping.run(all_z, None)  # [minibatch, layer, component]
     all_w = w_avg + (all_w - w_avg) * truncation_psi  # [minibatch, layer, component]
@@ -109,10 +140,21 @@ def mix_images(
 
 
 if __name__ == "__main__":
-    mix_images(
-        network_pkl="gdrive:networks/stylegan2-ffhq-config-f.pkl",
-        row_seeds=[1000, 150, 20000],
-        col_seeds=[2000, 3500, 500000],
-        truncation_psi=1.0,
-        col_styles=[0, 1, 2, 3, 4, 5, 6, 7],
+    # mix_images(
+    #     network_pkl="gdrive:networks/stylegan2-ffhq-config-f.pkl",
+    #     row_seeds=[1000, 150, 20000],
+    #     col_seeds=[2000, 3500, 500000],
+    #     truncation_psi=1.0,
+    #     col_styles=[0, 1, 2, 3, 4, 5, 6, 7],
+    # )
+
+    latents = list(ds.read_latents())
+
+    i1 = gen_img(latents[0], truncation_psi=1.0)
+    i2 = gen_img(latents[3], truncation_psi=1.0)
+    mixed = gen_img(
+        np.concatenate([latents[0][:12], latents[4][12:]], axis=0), truncation_psi=1.0
     )
+    i1.save("i1.jpg")
+    i2.save("i2.jpg")
+    mixed.save("mixed.jpg")

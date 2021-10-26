@@ -1,0 +1,1 @@
+venv\Scripts\python encode_images.py imgs_to_encode/ decoded_images/ latent_representations/ --batch_size=2
