@@ -47,7 +47,7 @@ def mix_images(
     """
     Execute the StyleGAN 2 to generate the mix of the images
     """
-    print('Loading networks from "%s"...' % network_pkl)
+    print('Loading networks from "%s"...' % network_pkl)''
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     Gs.print_layers()
     w_avg = Gs.get_var("dlatent_avg")  # [component]
