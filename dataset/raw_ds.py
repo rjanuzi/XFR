@@ -6,8 +6,7 @@ RAW_DATASET_FOLDER = Path(Path(__file__).parent, "raw")
 RAW_DATASET_FOLDER.mkdir(exist_ok=True)
 
 
-def lookup_raw_imgs(person_names: list = None, poses: list = None
-) -> DataFrame:
+def lookup_raw_imgs(person_names: list = None, poses: list = None) -> DataFrame:
     """
     Generate the dataset entries.
     In:
@@ -26,18 +25,15 @@ def lookup_raw_imgs(person_names: list = None, poses: list = None
         if person_dir.is_dir():
             try:
                 poses_files = [
-                    (file.stem, file.absolute())
-                    for file in person_dir.glob("[!mask]*.jpg")
+                    (file.stem, file.absolute()) for file in person_dir.glob("*.jpg")
                 ]
 
                 poses_files += [
-                    (file.stem, file.absolute())
-                    for file in person_dir.glob("[!mask]*.jpeg")
+                    (file.stem, file.absolute()) for file in person_dir.glob("*.jpeg")
                 ]
 
                 poses_files += [
-                    (file.stem, file.absolute())
-                    for file in person_dir.glob("[!mask]*.png")
+                    (file.stem, file.absolute()) for file in person_dir.glob("*.png")
                 ]
             except NotADirectoryError as e:
                 print("[ERROR]: dataset.raw_ds.py - Invalid dataset structure")

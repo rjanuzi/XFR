@@ -6,7 +6,7 @@ import PIL.Image
 
 def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True, x_scale=1, y_scale=1, em_scale=0.1, alpha=False):
         # Align function from FFHQ dataset pre-processing step
-        # https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py
+        # https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py 
 
         lm = np.array(face_landmarks)
         lm_chin          = lm[0  : 17]  # left-right
