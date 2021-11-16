@@ -53,6 +53,6 @@ def align_images(imgs_path_lst, output_folder_path_lst):
         for i, face_landmarks in enumerate(
             landmarks_detector.get_landmarks(img_path), start=1
         ):
-            output_img_path = output_folder.joinpath(f"{img_path.stem}_{i}.png")
+            output_img_path = output_folder.joinpath(f"{img_path.stem}.png")
             image_align(img_path, output_img_path, face_landmarks)
     print("done.")
