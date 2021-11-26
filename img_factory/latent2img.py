@@ -1,51 +1,46 @@
-from pathlib import Path
-
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import rcParams
+import pretrained_networks
+from dataset.processed_ds import read_aligned, read_latent, read_mask
+from encoder.generator_model import Generator
 from PIL import Image, ImageFilter
 
-import pretrained_networks
-from encoder.generator_model import Generator
 
-_, _, Gs_network = pretrained_networks.load_networks(
-    "gdrive:networks/stylegan2-ffhq-config-f.pkl"
-)
+def generate(person_name: str) -> Image:
+    latent = read_latent(person_name=person_name)
+    latent = latent[
+        np.newaxis
+    ]  # Expand dimension, since the model expects a batch of images
 
-generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+    # Recover trained generator
+    _, _, Gs_network = pretrained_networks.load_networks(
+        "gdrive:networks/stylegan2-ffhq-config-f.pkl"
+    )
 
-LATENT_PATH = Path("dataset/processed/ffaria/latent")
-ORIGINAL_PATH = Path("dateset/processed/ffaria/aligned/normal.png")
-MASK_PATH = Path("dataset/processed/ffaria/mask/normal.png")
+    generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
-# Read latent
-latent = np.load(LATENT_PATH)
-latent = latent[np.newaxis]
+    generator.set_dlatents(latent)
+    generated_images = generator.generate_images()
 
-# Gen image from latent
-generator.set_dlatents(latent)
-generated_images = generator.generate_images()
-generated = Image.fromarray(generated_images[0], "RGB")
+    return Image.fromarray(generated_images[0], "RGB")
 
-# Read the original image (aligned)
-orig_img = Image.open(ORIGINAL_PATH).convert("RGB")
-width, height = orig_img.size
 
-# Read mask in grayscale ("L") and apply a blur filter to better composition
-imask = Image.open(MASK_PATH).convert(mode="L").resize((width, height))
-imask = imask.filter(ImageFilter.GaussianBlur(radius=8))
-mask = np.array(imask) / 255
-mask = np.expand_dims(mask, axis=-1)
+def add_original_background(person_name: str, generated_img: Image) -> Image:
+    imask = read_mask(person_name=PERSON)
+    aligned = read_aligned(person_name=PERSON)
 
-# Composite the background from original with the generated image
-img_array = mask * np.array(generated_images) + (1.0 - mask) * np.array(orig_img)
-img_array = img_array.astype(np.uint8)
-reconstructed = Image.fromarray(img_array[0], "RGB")
+    width, height = aligned.size
+    imask = imask.resize((width, height))
+    imask = imask.filter(ImageFilter.GaussianBlur(radius=8))
+    mask = np.array(imask) / 255
+    mask = np.expand_dims(mask, axis=-1)
 
-# Plot
-rcParams["figure.figsize"] = 24, 12
-fig, ax = plt.subplots(1, 4)
-ax[0].imshow(generated)
-ax[1].imshow(imask)
-ax[2].imshow(orig_img)
-ax[3].imshow(reconstructed)
+    # Composite the background from original with the generated image
+    background = (1.0 - mask) * np.array(aligned)
+    generated_face = mask * np.array(generated_img)
+    img_array = generated_face + background
+
+    # Convert to PIL image
+    img_array = img_array.astype(np.uint8)
+    reconstructed = Image.fromarray(img_array[0], "RGB")
+
+    return reconstructed
