@@ -41,7 +41,8 @@ def read_file(person_name: str, folder_kind: str, file_name: str) -> bytes:
 
 def read_latent(person_name: str) -> np.ndarray:
     return np.load(
-        get_file_path(person_name, PROCESSED_DS_FOLDER_KIND_LATENT, "normal.npy")
+        get_file_path(person_name, PROCESSED_DS_FOLDER_KIND_LATENT, "normal.npy"),
+        allow_pickle=True
     )
 
 
