@@ -14,9 +14,9 @@ _, _, Gs_network = pretrained_networks.load_networks(
 
 generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
-LATENT_PATH = Path("dataset").joinpath("ffaria").joinpath("normal.npy")
-ORIGINAL_PATH = Path("aligned_images").joinpath("ffaria_normal_01.png")
-MASK_PATH = Path("masks").joinpath("ffaria_normal_01.png")
+LATENT_PATH = Path("dataset/processed/ffaria/latent")
+ORIGINAL_PATH = Path("dateset/processed/ffaria/aligned/normal.png")
+MASK_PATH = Path("dataset/processed/ffaria/mask/normal.png")
 
 # Read latent
 latent = np.load(LATENT_PATH)

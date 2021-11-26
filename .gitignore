@@ -6,3 +6,6 @@ results
 venv
 cache
 .land_mark_cache
+test_nvcc.exe
+test_nvcc.exp
+test_nvcc.lib
