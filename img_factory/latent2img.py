@@ -42,6 +42,6 @@ def add_original_background(person_name: str, generated_img: Image) -> Image:
 
     # Convert to PIL image
     img_array = img_array.astype(np.uint8)
-    reconstructed = Image.fromarray(img_array[0], "RGB")
+    reconstructed = Image.fromarray(img_array, "RGB")
 
     return reconstructed
