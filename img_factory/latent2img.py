@@ -5,8 +5,12 @@ from encoder.generator_model import Generator
 from PIL import Image, ImageFilter
 
 
-def generate(person_name: str) -> Image:
-    latent = read_latent(person_name=person_name)
+def generate(latent: np.ndarray = None, person_name: str = None) -> Image:
+    assert (
+        latent is not None or person_name is not None
+    ), "Either latent or person_name must be provided"
+
+    latent = latent if latent is not None else read_latent(person_name=person_name)
     latent = latent[
         np.newaxis
     ]  # Expand dimension, since the model expects a batch of images
