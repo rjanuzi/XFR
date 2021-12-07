@@ -1,7 +1,7 @@
 import cv2
 
 
-def imgs_to_video(img_paths, output_path, fps=30, size=(512, 512)):
+def imgs_to_video(img_paths, output_path, fps=10, size=(512, 512)):
     """
     imgs: list of images
     output_path: path to output video
