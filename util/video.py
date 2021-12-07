@@ -16,3 +16,5 @@ def imgs_to_video(img_paths, output_path, fps=30, size=(512, 512)):
         cv_img = cv2.resize(cv_img, size)
         writer.write(cv_img)
     writer.release()
+
+    return output_path

@@ -22,5 +22,9 @@ for idx, img in enumerate(reconstructed):
     img_paths.append(str(tmp_path))
     img.save(tmp_path)
 
-imgs_to_video(img_paths, OUTPUT_PATH.joinpath("latent_exploration_sample.avi"))
-imgs_to_gif(reconstructed, OUTPUT_PATH.joinpath("latent_exploration_sample.gif"))
+video_path = imgs_to_video(
+    img_paths, OUTPUT_PATH.joinpath("latent_exploration_sample.avi")
+)
+gif_path = imgs_to_gif(
+    reconstructed, OUTPUT_PATH.joinpath("latent_exploration_sample.gif")
+)
