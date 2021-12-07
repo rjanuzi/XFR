@@ -18,8 +18,8 @@ def make_latent_generator(
         yield tmp_latent
 
 
-def explore(latent_idx_to_explore: int, person_name: str) -> list:
+def explore(latent_idxes_to_explore: int, person_name: str) -> list:
     latent_generator = make_latent_generator(
-        latent_idx_to_explore=latent_idx_to_explore, person_name=person_name
+        latent_idxes_to_explore=latent_idxes_to_explore, person_name=person_name
     )
     return [generate(latent=l) for l in latent_generator]
