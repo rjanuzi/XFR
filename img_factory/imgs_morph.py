@@ -14,7 +14,7 @@ class UnknowLatentCombinatorMethod(Exception):
     pass
 
 
-def make_latent_combinator(latent_1, latent_2, method=LATENT_COMBINATOR_METHOD_CONCAT):
+def make_latent_combinator(latent_1, latent_2, method):
     if method == LATENT_COMBINATOR_METHOD_CONCAT:
         for split_idx in range(1, latent_1.shape[0]):
             yield np.append(latent_1[:split_idx], latent_2[split_idx:], axis=0)
@@ -23,13 +23,19 @@ def make_latent_combinator(latent_1, latent_2, method=LATENT_COMBINATOR_METHOD_C
             yield latent_1 * alpha + latent_2 * (1 - alpha)
 
 
-def morph(person_name_1: str, person_name_2: str) -> list:
+def morph(
+    person_name_1: str,
+    person_name_2: str,
+    interpolation_method=LATENT_COMBINATOR_METHOD_LINEAR_INTERPOLATION,
+) -> list:
     latent_1 = read_latent(person_name=person_name_1)
     latent_2 = read_latent(person_name=person_name_2)
 
     # Generate mixed latent vectors
     latents = latent_2[np.newaxis]
-    for mixed_latent in make_latent_combinator(latent_1, latent_2):
+    for mixed_latent in make_latent_combinator(
+        latent_1=latent_1, latent_2=latent_2, method=interpolation_method
+    ):
         latents = np.append(latents, [mixed_latent], axis=0)
     latents = np.append(latents, [latent_1], axis=0)
 
