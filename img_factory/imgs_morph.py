@@ -7,6 +7,8 @@ from PIL import Image
 LATENT_COMBINATOR_METHOD_CONCAT = 1
 LATENT_COMBINATOR_METHOD_LINEAR_INTERPOLATION = 2
 
+LINEAR_INTERPOLATION_IMGS_TO_GEN = 20
+
 
 class UnknowLatentCombinatorMethod(Exception):
     pass
@@ -17,8 +19,8 @@ def make_latent_combinator(latent_1, latent_2, method=LATENT_COMBINATOR_METHOD_C
         for split_idx in range(1, latent_1.shape[0]):
             yield np.append(latent_1[:split_idx], latent_2[split_idx:], axis=0)
     elif method == LATENT_COMBINATOR_METHOD_LINEAR_INTERPOLATION:
-        # TODO - Interpolação linear
-        raise UnknowLatentCombinatorMethod
+        for alpha in np.linspace(0, 1, num=LINEAR_INTERPOLATION_IMGS_TO_GEN):
+            yield latent_1 * alpha + latent_2 * (1 - alpha)
 
 
 def morph(person_name_1: str, person_name_2: str) -> list:
