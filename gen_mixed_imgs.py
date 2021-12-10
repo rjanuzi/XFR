@@ -47,7 +47,7 @@ def mix_images(
     """
     Execute the StyleGAN 2 to generate the mix of the images
     """
-    print('Loading networks from "%s"...' % network_pkl)''
+    print('Loading networks from "%s"...' % network_pkl)
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     Gs.print_layers()
     w_avg = Gs.get_var("dlatent_avg")  # [component]
@@ -61,7 +61,8 @@ def mix_images(
 
     print("Generating W vectors...")
     all_seeds = list(set(row_seeds + col_seeds))
-    all_z = np.stack([np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
+    all_z = np.stack(
+        [np.random.RandomState(seed).randn(*Gs.input_shape[1:]) for seed in all_seeds]
     )  # [minibatch, component]
     all_w = Gs.components.mapping.run(all_z, None)  # [minibatch, layer, component]
     all_w = w_avg + (all_w - w_avg) * truncation_psi  # [minibatch, layer, component]

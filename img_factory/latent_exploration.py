@@ -9,7 +9,7 @@ def make_latent_generator(
     latent_idxes_to_explore: list, person_name: str
 ) -> np.ndarray:
     latent = read_latent(person_name=person_name)
-    noise = np.random.normal(loc=0, scale=1000, size=latent[0].shape)
+    noise = np.random.normal(loc=0, scale=2, size=latent[0].shape)
     for multiplier in np.arange(0, 1, 0.01):
         tmp_latent = latent.copy()
         tmp_noise = multiplier * noise
