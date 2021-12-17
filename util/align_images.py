@@ -55,4 +55,5 @@ def align_images(imgs_path_lst, output_folder_path_lst):
         ):
             output_img_path = output_folder.joinpath(f"{img_path.stem}.png")
             image_align(img_path, output_img_path, face_landmarks)
+            print(f"Aligned {i} faces from {img_path} to {output_img_path}")
     print("done.")
