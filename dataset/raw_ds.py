@@ -28,6 +28,10 @@ def lookup_raw_imgs(person_names: list = None, poses: list = None) -> DataFrame:
                     (file.stem, file.absolute()) for file in person_dir.glob("*.jpg")
                 ]
 
+                poses_files = [
+                    (file.stem, file.absolute()) for file in person_dir.glob("*.JPG")
+                ]
+
                 poses_files += [
                     (file.stem, file.absolute()) for file in person_dir.glob("*.jpeg")
                 ]
