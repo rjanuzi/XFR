@@ -1,5 +1,8 @@
 import bz2
+import os
+import sys
 from pathlib import Path
+
 import requests
 
 from util.ffhq_dataset.face_alignment import image_align
@@ -57,3 +60,23 @@ def align_images(imgs_path_lst, output_folder_path_lst):
             image_align(img_path, output_img_path, face_landmarks)
             print(f"Aligned {i} faces from {img_path} to {output_img_path}")
     print("done.")
+
+
+if __name__ == "__main__":
+    """
+    Extracts and aligns all faces from images using DLib and a function from original FFHQ dataset preparation step
+    python align_images.py /raw_images /aligned_images
+    """
+    RAW_IMAGES_DIR = sys.argv[1]
+    ALIGNED_IMAGES_DIR = sys.argv[2]
+
+    landmarks_detector = LandmarksDetector(get_landmark_model())
+    for img_name in [x for x in os.listdir(RAW_IMAGES_DIR) if x[0] not in "._"]:
+        raw_img_path = os.path.join(RAW_IMAGES_DIR, img_name)
+        for i, face_landmarks in enumerate(
+            landmarks_detector.get_landmarks(raw_img_path), start=1
+        ):
+            face_img_name = "%s_%02d.png" % (os.path.splitext(img_name)[0], i)
+            aligned_face_path = os.path.join(ALIGNED_IMAGES_DIR, face_img_name)
+            os.makedirs(ALIGNED_IMAGES_DIR, exist_ok=True)
+            image_align(raw_img_path, aligned_face_path, face_landmarks)
