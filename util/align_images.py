@@ -5,8 +5,8 @@ from pathlib import Path
 
 import requests
 
-from util.ffhq_dataset.face_alignment import image_align
-from util.ffhq_dataset.landmarks_detector import LandmarksDetector
+from ffhq_dataset.face_alignment import image_align
+from ffhq_dataset.landmarks_detector import LandmarksDetector
 
 LANDMARKS_TEMP_FOLDER = Path(".land_mark_cache")
 LANDMARKS_MODEL_URL = "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2"
