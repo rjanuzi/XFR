@@ -345,11 +345,6 @@ def main():
     # Skip already generated images
     try:
 
-        def __need_process_img(ref_img_path, already_generated_dict):
-            return os.path.isfile(ref_img_path) and not already_generated_dict.get(
-                str(os.path), False
-            )
-
         tmp_already_generated = [
             os.path.join(args.generated_images_dir, x)
             for x in os.listdir(args.generated_images_dir)
@@ -363,7 +358,8 @@ def main():
 
         ref_images = list(
             filter(
-                __need_process_img,
+                lambda img_path: os.path.isfile(img_path)
+                and not already_generated_dict.get(str(os.path), False),
                 ref_images,
             )
         )
