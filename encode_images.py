@@ -1,17 +1,20 @@
-import os
 import argparse
+import os
 import pickle
-from tqdm import tqdm
-import PIL.Image
-from PIL import ImageFilter
+from pathlib import Path
+
 import numpy as np
+import PIL.Image
+from keras.applications.resnet50 import preprocess_input
+from keras.models import load_model
+from PIL import ImageFilter
+from tqdm import tqdm
+
 import dnnlib
 import dnnlib.tflib as tflib
 import pretrained_networks
 from encoder.generator_model import Generator
 from encoder.perceptual_model import PerceptualModel
-from keras.models import load_model
-from keras.applications.resnet50 import preprocess_input
 
 
 def split_to_batches(l, n):
@@ -352,14 +355,14 @@ def main():
         ]
         already_generated_dict = {}
         for already_generated_file in filter(os.path.isfile, tmp_already_generated):
-            already_generated_dict[str(already_generated_file)] = True
+            already_generated_dict[Path(already_generated_file).stem] = True
 
         count_before = len(ref_images)
 
         ref_images = list(
             filter(
                 lambda img_path: os.path.isfile(img_path)
-                and not already_generated_dict.get(str(os.path), False),
+                and not already_generated_dict.get(Path(img_path).stem, False),
                 ref_images,
             )
         )
