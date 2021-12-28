@@ -357,13 +357,14 @@ def main():
 
         ref_images = list(
             filter(
-                os.path.isfile
-                and not already_generated.get(str(os.path), default=False),
+                os.path.isfile and not already_generated.get(str(os.path), False),
                 ref_images,
             )
         )
 
-        print(f"Skipping {len(ref_images) - count_before} already generated images. {len(ref_images)} to go.")
+        print(
+            f"Skipping {len(ref_images) - count_before} already generated images. {len(ref_images)} to go."
+        )
 
     except FileNotFoundError:
         ref_images = list(filter(os.path.isfile, ref_images))
