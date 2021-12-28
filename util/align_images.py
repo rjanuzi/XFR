@@ -5,8 +5,8 @@ from pathlib import Path
 
 import requests
 
-from ffhq_dataset.face_alignment import image_align
-from ffhq_dataset.landmarks_detector import LandmarksDetector
+from util.ffhq_dataset.face_alignment import image_align
+from util.ffhq_dataset.landmarks_detector import LandmarksDetector
 
 LANDMARKS_TEMP_FOLDER = Path(".land_mark_cache")
 LANDMARKS_MODEL_URL = "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2"
@@ -44,21 +44,26 @@ def get_landmark_model(fname=LANDMARKS_MODEL_FNAME, url=LANDMARKS_MODEL_URL):
     return unpack_bz2(file)
 
 
-def align_images(imgs_path_lst, output_folder_path_lst):
+def align_images(imgs_path_lst, output_path_lst):
     """
     Extracts and aligns all faces listed in params using the function from original FFHQ dataset preparation step
     :param imgs_path_lst: list of paths to images
     :param output_path_lst: list of paths to output images
     """
     landmarks_detector = LandmarksDetector(get_landmark_model())
-    print("Aligning images...")
-    for img_path, output_folder in zip(imgs_path_lst, output_folder_path_lst):
-        for i, face_landmarks in enumerate(
+    print("Aligning images ...")
+    aligned_count = 1
+    for img_path, output_img_path in zip(imgs_path_lst, output_path_lst):
+        for _, face_landmarks in enumerate(
             landmarks_detector.get_landmarks(img_path), start=1
         ):
-            output_img_path = output_folder.joinpath(f"{img_path.stem}.png")
             image_align(img_path, output_img_path, face_landmarks)
-            print(f"Aligned {i} faces from {img_path} to {output_img_path}")
+
+        aligned_count += 1
+        if aligned_count % 5 == 0:
+            print(
+                f"{aligned_count}/{len(imgs_path_lst)} -- {aligned_count/len(imgs_path_lst)*100:.2f}%"
+            )
     print("done.")
 
 
