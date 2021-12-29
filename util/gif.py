@@ -1,6 +1,3 @@
-from PIL import Image
-
-
 def imgs_to_gif(imgs: list, gif_path: str, duration: int = 100) -> None:
     """
     imgs: list of images

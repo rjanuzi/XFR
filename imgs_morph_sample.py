@@ -1,8 +1,25 @@
+from datetime import datetime
+from pathlib import Path
+
 from img_factory.imgs_morph import morph
-from img_factory.latent2img import add_original_background
+from util.gif import imgs_to_gif
 
-PERSON_1 = "ffaria"
-PERSON_2 = "raonifst"
+OUTPUT_FOLDER = Path(".morph_samples", f"{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-generated_imgs = morph(PERSON_1, PERSON_2)
-with_background = [add_original_background(PERSON_1, img) for img in generated_imgs]
+
+NAME_1 = "25169"
+NAME_2 = "25711"
+MASK_TO_APPLY = NAME_1
+
+generated_imgs = morph(name_1=NAME_1, name_2=NAME_2, mask_to_apply=MASK_TO_APPLY)
+
+for generated_img in generated_imgs:
+    generated_img.save(
+        OUTPUT_FOLDER.joinpath(f"{NAME_1}_to_{NAME_2}_with_{MASK_TO_APPLY}.png")
+    )
+
+imgs_to_gif(
+    generated_imgs,
+    OUTPUT_FOLDER.joinpath(f"{NAME_1}_to_{NAME_2}_with_{MASK_TO_APPLY}.gif"),
+)

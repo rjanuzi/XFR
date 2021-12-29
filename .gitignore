@@ -1,11 +1,12 @@
 __pycache__
 .stylegan2-cache
 .vscode
+.land_mark_cache
+.morph_samples
 _cudacache
 results
 venv
 cache
-.land_mark_cache
 test_nvcc.exe
 test_nvcc.exp
 test_nvcc.lib

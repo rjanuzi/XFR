@@ -1,8 +1,12 @@
+from os import name
+
 import numpy as np
 import pretrained_networks
-from dataset.processed_ds import read_latent
+from dataset import read_latent
 from encoder.generator_model import Generator
 from PIL import Image
+
+from img_factory.latent2img import DEFAULT_TRAINED_GENERATOR, add_original_background
 
 LATENT_COMBINATOR_METHOD_CONCAT = 1
 LATENT_COMBINATOR_METHOD_LINEAR_INTERPOLATION = 2
@@ -24,12 +28,13 @@ def make_latent_combinator(latent_1, latent_2, method):
 
 
 def morph(
-    person_name_1: str,
-    person_name_2: str,
-    interpolation_method=LATENT_COMBINATOR_METHOD_LINEAR_INTERPOLATION,
+    name_1: str,
+    name_2: str,
+    interpolation_method: int = LATENT_COMBINATOR_METHOD_CONCAT,
+    mask_to_apply: str = None,
 ) -> list:
-    latent_1 = read_latent(person_name=person_name_1)
-    latent_2 = read_latent(person_name=person_name_2)
+    latent_1 = read_latent(name=name_1)
+    latent_2 = read_latent(name=name_2)
 
     # Generate mixed latent vectors
     latents = latent_2[np.newaxis]
@@ -40,9 +45,7 @@ def morph(
     latents = np.append(latents, [latent_1], axis=0)
 
     # Recover trained generator
-    _, _, Gs_network = pretrained_networks.load_networks(
-        "gdrive:networks/stylegan2-ffhq-config-f.pkl"
-    )
+    _, _, Gs_network = pretrained_networks.load_networks(DEFAULT_TRAINED_GENERATOR)
 
     generator = Generator(
         Gs_network, batch_size=latents.shape[0], randomize_noise=False
@@ -50,6 +53,16 @@ def morph(
 
     # Generate mixed images
     generator.set_dlatents(latents)
-    generated_imgs = generator.generate_images()
+    generated_img_arrays = generator.generate_images()
 
-    return [Image.fromarray(generated_img, "RGB") for generated_img in generated_imgs]
+    generated_imgs = (
+        Image.fromarray(generated_img, "RGB") for generated_img in generated_img_arrays
+    )
+
+    if mask_to_apply is None:
+        return list(generated_imgs)
+    else:
+        return [
+            add_original_background(name=mask_to_apply, generated_img=img)
+            for img in generated_imgs
+        ]
