@@ -59,6 +59,13 @@ def read_latent(name: str) -> np.ndarray:
     )
 
 
+def read_latents(names: list) -> np.ndarray:
+    latents = []
+    for name in names:
+        latents.append(read_latent(name=name))
+    return np.array(latents)
+
+
 def read_mask(name: str) -> Image:
     return Image.open(
         get_file_path(name=name, dataset_kind=DATASET_KIND_MASKS, file_extension=".png")

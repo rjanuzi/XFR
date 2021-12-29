@@ -1,36 +1,35 @@
 import numpy as np
 import pretrained_networks
-from dataset.processed_ds import read_aligned, read_latent, read_mask
+from dataset import read_latents, read_mask, read_aligned
 from encoder.generator_model import Generator
 from PIL import Image, ImageFilter
 
+DEFAULT_TRAINED_GENERATOR = "gdrive:networks/stylegan2-ffhq-config-f.pkl"
 
-def generate(latent: np.ndarray = None, person_name: str = None) -> Image:
+
+def generate(latents: np.ndarray = None, names: list = None) -> list:
     assert (
-        latent is not None or person_name is not None
-    ), "Either latent or person_name must be provided"
+        latents is not None or names is not None
+    ), "Either latents or name must be provided"
 
-    latent = latent if latent is not None else read_latent(person_name=person_name)
-    latent = latent[
-        np.newaxis
-    ]  # Expand dimension, since the model expects a batch of images
+    latents = latents if latents is not None else read_latents(names=names)
 
     # Recover trained generator
-    _, _, Gs_network = pretrained_networks.load_networks(
-        "gdrive:networks/stylegan2-ffhq-config-f.pkl"
+    _, _, Gs_network = pretrained_networks.load_networks(DEFAULT_TRAINED_GENERATOR)
+
+    generator = Generator(
+        Gs_network, batch_size=latents.shape[0], randomize_noise=False
     )
 
-    generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
-
-    generator.set_dlatents(latent)
+    generator.set_dlatents(latents)
     generated_images = generator.generate_images()
 
-    return Image.fromarray(generated_images[0], "RGB")
+    return [Image.fromarray(img_array, "RGB") for img_array in generated_images]
 
 
-def add_original_background(person_name: str, generated_img: Image) -> Image:
-    imask = read_mask(person_name=person_name)
-    aligned = read_aligned(person_name=person_name)
+def add_original_background(name: str, generated_img: Image) -> Image:
+    imask = read_mask(name=name)
+    aligned = read_aligned(name=name)
 
     # Process the mask image
     width, height = aligned.size
