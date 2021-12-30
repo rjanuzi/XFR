@@ -368,7 +368,7 @@ def main():
         )
 
         print(
-            f"Skipping {len(ref_images) - count_before} already generated images. {len(ref_images)} to go."
+            f"Skipping {count_before-len(ref_images)} already generated images. {len(ref_images)} to go."
         )
 
     except FileNotFoundError:
