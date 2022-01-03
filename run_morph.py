@@ -34,34 +34,43 @@ for _, row in latents_to_morph.iterrows():
     source_b_name = row.name_2
     mask_to_apply = source_a_name
 
-    try:
-        generated_imgs = morph(
-            name_1=source_a_name, name_2=source_b_name, mask_to_apply=mask_to_apply
-        )
+    tmp_path = get_file_path(
+        f"{source_a_name}_morph_{source_b_name}_0",
+        DATASET_KIND_MORPH,
+        ".png",
+    )
 
-        for idx, generated_img in enumerate(generated_imgs):
-            generated_img.save(
-                get_file_path(
-                    f"{source_a_name}_morph_{source_b_name}_{idx}",
-                    DATASET_KIND_MORPH,
-                    ".png",
-                )
+    if not tmp_path.exists():
+        try:
+            generated_imgs = morph(
+                name_1=source_a_name, name_2=source_b_name, mask_to_apply=mask_to_apply
             )
 
-        imgs_to_gif(
-            generated_imgs,
-            get_file_path(
-                f"{source_a_name}_morph_{source_b_name}",
-                DATASET_KIND_MORPH,
-                ".gif",
-            ),
-        )
-    except Exception:
-        print(traceback.format_exc())
-        print(f"Failed to morph {source_a_name} with {source_b_name}")
+            for idx, generated_img in enumerate(generated_imgs):
+                generated_img.save(
+                    get_file_path(
+                        f"{source_a_name}_morph_{source_b_name}_{idx}",
+                        DATASET_KIND_MORPH,
+                        ".png",
+                    )
+                )
 
-    done_count += 1
-    if done_count % 10 == 0:
-        print(
-            f"Morphing... {round(done_count/len(latents_to_morph),2)}% -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
-        )
+            imgs_to_gif(
+                generated_imgs,
+                get_file_path(
+                    f"{source_a_name}_morph_{source_b_name}",
+                    DATASET_KIND_MORPH,
+                    ".gif",
+                ),
+            )
+        except Exception:
+            print(traceback.format_exc())
+            print(f"Failed to morph {source_a_name} with {source_b_name}")
+
+        done_count += 1
+        if done_count % 10 == 0:
+            print(
+                f"Morphing... {round(done_count/len(latents_to_morph),2)}% -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+            )
+    else:
+        print(f"Skipping {source_a_name} with {source_b_name}")
