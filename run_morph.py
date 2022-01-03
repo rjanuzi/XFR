@@ -18,6 +18,7 @@ latents_dataset = dataset_idx.loc[
 ]
 
 # Split the dataset at mid point (we want to morph the imgs at index n with n+mid)
+latents_dataset = latents_dataset.sort_values(by=["name"]).reset_index(drop=True)
 mid = int(len(latents_dataset) / 2)
 latents_dataset_1 = latents_dataset.iloc[:mid].reset_index(drop=True)
 latents_dataset_2 = latents_dataset.iloc[mid:].reset_index(drop=True)
