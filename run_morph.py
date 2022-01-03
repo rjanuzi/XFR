@@ -1,14 +1,14 @@
-from img_factory.imgs_morph import morph
-from util.gif import imgs_to_gif
+from time import time
 
 from dataset import (
     DATASET_KIND_LATENTS,
-    DATASET_KIND_MASKS,
-    DATASET_KIND_STR,
     DATASET_KIND_MORPH,
+    DATASET_KIND_STR,
     gen_dataset_index,
     get_file_path,
 )
+from img_factory.imgs_morph import morph
+from util.gif import imgs_to_gif
 
 # Get the list of images to align, ignoring the already aligned ones
 dataset_idx = gen_dataset_index()
@@ -25,7 +25,10 @@ latents_to_morph = latents_dataset_1.join(
     other=latents_dataset_2, how="left", lsuffix="_1", rsuffix="_2"
 )
 
-for idx, row in latents_to_morph.iterrows():
+done_count = 0
+start_time = time()
+for _, row in latents_to_morph.iterrows():
+    step_start_time = time()
     source_a_name = row.name_1
     source_b_name = row.name_2
     mask_to_apply = source_a_name
@@ -51,3 +54,9 @@ for idx, row in latents_to_morph.iterrows():
             ".gif",
         ),
     )
+
+    done_count += 1
+    if done_count % 10 == 0:
+        print(
+            f"Morphing... {round(done_count/len(latents_to_morph),2)}% -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+        )

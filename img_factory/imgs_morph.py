@@ -47,16 +47,17 @@ def morph(
     # Recover trained generator
     _, _, Gs_network = pretrained_networks.load_networks(DEFAULT_TRAINED_GENERATOR)
 
-    generator = Generator(
-        Gs_network, batch_size=latents.shape[0], randomize_noise=False
-    )
+    generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
     # Generate mixed images
-    generator.set_dlatents(latents)
-    generated_img_arrays = generator.generate_images()
+    generated_img_arrays = []
+    for latent in latents:
+        generator.set_dlatents(latent[np.newaxis])
+        generated_img_arrays.append(generator.generate_images())
 
     generated_imgs = (
-        Image.fromarray(generated_img, "RGB") for generated_img in generated_img_arrays
+        Image.fromarray(generated_img[0], "RGB")
+        for generated_img in generated_img_arrays
     )
 
     if mask_to_apply is None:
