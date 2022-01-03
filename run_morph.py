@@ -71,7 +71,7 @@ for _, row in latents_to_morph.iterrows():
         done_count += 1
         if done_count % 10 == 0:
             print(
-                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round(done_count/len(latents_to_morph),2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
             )
     else:
         print(f"Skipping {source_a_name} with {source_b_name}")
