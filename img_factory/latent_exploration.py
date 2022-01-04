@@ -1,5 +1,4 @@
 import numpy as np
-import pretrained_networks
 from dataset.processed_ds import read_latent
 
 from img_factory.latent2img import generate

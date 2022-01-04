@@ -113,8 +113,17 @@ def gen_dataset_index() -> DataFrame:
 
 def ls_imgs_paths(kind: int = DATASET_KIND_RAW) -> list:
     """
-    List the images paths and poses.
+    List the images paths.
     Out: A list with the raw images paths.
     """
     entries = gen_dataset_index()
     return entries.loc[entries["kind"] == DATASET_KIND_STR[kind], "img_path"].tolist()
+
+
+def ls_imgs_names(kind: int = DATASET_KIND_RAW) -> list:
+    """
+    List the images paths.
+    Out: A list with the raw images paths.
+    """
+    entries = gen_dataset_index()
+    return entries.loc[entries["kind"] == DATASET_KIND_STR[kind], "name"].tolist()

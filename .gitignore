@@ -10,3 +10,4 @@ cache
 test_nvcc.exe
 test_nvcc.exp
 test_nvcc.lib
+*tmp_results.json
