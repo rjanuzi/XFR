@@ -10,4 +10,5 @@ cache
 test_nvcc.exe
 test_nvcc.exp
 test_nvcc.lib
-*tmp_results.json
+*bkp_results.json
+*dlib_fr_results.json
