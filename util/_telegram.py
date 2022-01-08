@@ -1,11 +1,20 @@
 import json
 import logging
 import traceback
+from pathlib import Path
 
 from telegram import Bot, InputFile, ParseMode
 
-_TELEGRAM_BOT_KEY = "1754067352:AAHgzr2qSoT7mqkGUw0nT01B2KM3ISHSTkE"  # rjanuzi_bot
-_TELEGRAM_CHAT_ID = "-436350789"
+_TELEGRAM_CONFIG_FILE = Path("util", "telegram_config.json")
+_TELEGRAM_BOT_KEY = None
+_TELEGRAM_CHAT_ID = None
+try:
+    config = json.load(open(_TELEGRAM_CONFIG_FILE, "r"))
+    _TELEGRAM_BOT_KEY = config["BOT_KEY"]
+    _TELEGRAM_CHAT_ID = config["CHAT_ID"]
+except FileNotFoundError:
+    logging.error("Error loading telegram configuration.")
+    pass
 
 
 def send_simple_message(text, bot_key=_TELEGRAM_BOT_KEY, chat_id=_TELEGRAM_CHAT_ID):
