@@ -81,6 +81,7 @@ if __name__ == "__main__":
                                 )
                                 tries = 0
                                 sleep(15 * 60)
+                                send_simple_message(f"Restarting download process...")
                             continue
 
                         with open(local_img_path, "wb") as handler:
