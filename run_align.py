@@ -5,7 +5,7 @@ from dataset import (
     gen_dataset_index,
     get_file_path,
 )
-
+from util._telegram import send_simple_message
 from util.align_images import align_images
 
 # Get the list of images to align, ignoring the already aligned ones
@@ -30,7 +30,12 @@ output_folder_paths = (
     .tolist()
 )
 
-align_images(
-    imgs_path_lst=raw_dataset["img_path_x"].tolist(),
-    output_path_lst=output_folder_paths,
-)
+try:
+    align_images(
+        imgs_path_lst=raw_dataset["img_path_x"].tolist(),
+        output_path_lst=output_folder_paths,
+    )
+    send_simple_message("Alignment finished")
+except Exception as e:
+    send_simple_message("Some error occurred while aligning images")
+    raise e
