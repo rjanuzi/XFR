@@ -49,10 +49,10 @@ if __name__ == "__main__":
                 if not local_img_path.exists():
                     drive_url = img_ref["drive_url"]
                     print(f"Downloading {img_name} from {drive_url}...")
-                    gdown.download(drive_url, local_img_path, quiet=True)
-                    # img_data = requests.get(drive_url).content
-                    # with open(local_img_path, "wb") as handler:
-                    #     handler.write(img_data)
+                    # gdown.download(drive_url, local_img_path, quiet=True)
+                    img_data = requests.get(drive_url).content
+                    with open(local_img_path, "wb") as handler:
+                        handler.write(img_data)
 
             send_simple_message(
                 f"FFHQ Frontal images downloaded. {int(time() - start_time)} seconds"
