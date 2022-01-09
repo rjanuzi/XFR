@@ -1,16 +1,19 @@
 import json
 import sys
 from pathlib import Path
-from time import time
+from time import sleep, time
 
 import gdown
-import requests
-from util._telegram import send_simple_message
+from requests import get
 
 from dataset import DATASET_RAW_FOLDER
+from util._telegram import send_simple_message
 
 DATASET_FOLDER = Path("dataset")
 FFHQ_FRONTAL_REF_FILE = DATASET_FOLDER.joinpath("ffhq_frontal.json")
+MAX_RETRIES = 5
+RETRY_DELAY_SECONDS = 30
+RESTART_WAIT_TIME_SECONDS = 15 * 60
 
 DATASET_RAW_DRIVE_SHARED_FOLDER = "https://drive.google.com/drive/folders/1kXjCPA-WGGhP33WKBa-dmSEdtCwkPLXD?usp=sharing"
 DATASET_ALIGNED_DRIVE_SHARED_FOLDER = "https://drive.google.com/drive/folders/1Vv0S90hy93UU4lZK8h3DQTA-kshfZA7e?usp=sharing"
@@ -28,11 +31,20 @@ GDRIVE_FOLDERS = [
     DATASET_MORPH_DRIVE_SHARED_FOLDER,
 ]
 
+
+def get_content(url):
+    img_data = get(drive_url).content
+    if img_data and b"html" not in img_data:
+        return img_data
+
+
 if __name__ == "__main__":
     params = sys.argv[1:]
 
     if len(params) != 1:
-        raise ValueError("Wrong parameters provided")
+        params.append("ffhq_frontal")
+
+    print(f"Starting downaload {params[0]} images.")
 
     if params[0] == "drive_folders":
         for gdrive_folder in GDRIVE_FOLDERS:
@@ -48,14 +60,31 @@ if __name__ == "__main__":
                 local_img_path = DATASET_RAW_FOLDER.joinpath(f"{img_name}.jpg")
                 if not local_img_path.exists():
                     drive_url = img_ref["drive_url"]
-                    print(f"Downloading {img_name} from {drive_url}...")
-                    # gdown.download(drive_url, local_img_path, quiet=True)
-                    img_data = requests.get(drive_url).content
-                    if not img_data or b"html" in img_data:
-                        print(f"Error downloading {img_name}")
-                        continue
-                    with open(local_img_path, "wb") as handler:
-                        handler.write(img_data)
+                    tries = 0
+                    img_data = None
+                    while img_data is None:
+                        tries += 1
+                        print(f"Downloading {img_name} from {drive_url}...")
+                        img_data = get_content(drive_url)
+                        if img_data is None:
+                            if tries <= MAX_RETRIES:
+                                print(
+                                    f"Error downloading {img_name}. Waiting {RETRY_DELAY_SECONDS} seconds to retry..."
+                                )
+                                sleep(30)
+                            else:
+                                print(
+                                    f"Error downloading {img_name}. Waiting {int(RESTART_WAIT_TIME_SECONDS/60)} minutes to restart process..."
+                                )
+                                send_simple_message(
+                                    f"Error downloading {img_name}. Waiting {int(RESTART_WAIT_TIME_SECONDS/60)} minutes to restart process..."
+                                )
+                                tries = 0
+                                sleep(15 * 60)
+                            continue
+
+                        with open(local_img_path, "wb") as handler:
+                            handler.write(img_data)
 
             send_simple_message(
                 f"FFHQ Frontal images downloaded. {int(time() - start_time)} seconds"
