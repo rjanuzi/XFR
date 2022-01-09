@@ -9,6 +9,7 @@ from dataset import (
     get_file_path,
 )
 from img_factory.imgs_morph import morph
+from util._telegram import send_gif, send_simple_message
 from util.gif import imgs_to_gif
 
 # Get the list of images to align, ignoring the already aligned ones
@@ -41,6 +42,12 @@ for _, row in latents_to_morph.iterrows():
         ".png",
     )
 
+    last_gif_path = get_file_path(
+        f"{source_a_name}_morph_{source_b_name}",
+        DATASET_KIND_MORPH,
+        ".gif",
+    )
+
     if not tmp_path.exists():
         try:
             generated_imgs = morph(
@@ -58,11 +65,7 @@ for _, row in latents_to_morph.iterrows():
 
             imgs_to_gif(
                 generated_imgs,
-                get_file_path(
-                    f"{source_a_name}_morph_{source_b_name}",
-                    DATASET_KIND_MORPH,
-                    ".gif",
-                ),
+                last_gif_path,
             )
         except Exception:
             print(traceback.format_exc())
@@ -73,6 +76,11 @@ for _, row in latents_to_morph.iterrows():
             print(
                 f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
             )
+            send_simple_message(
+                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+            )
+            send_gif(gif_path=last_gif_path, caption="Last morph result")
+
     else:
         done_count += 1
         print(f"Skipping {source_a_name} with {source_b_name}")

@@ -51,6 +51,28 @@ def send_img(
             return False, traceback.format_exc()
 
 
+def send_gif(
+    bot_key=_TELEGRAM_BOT_KEY,
+    chat_id=_TELEGRAM_CHAT_ID,
+    gif_path=None,
+    gif_binary=None,
+    caption="",
+):
+    if bot_key and chat_id:
+        assert gif_path or gif_binary
+        try:
+            img_data = (
+                InputFile(gif_binary) if gif_binary else InputFile(open(gif_path, "rb"))
+            )
+            result = Bot(token=bot_key).send_animation(
+                chat_id=chat_id, photo=img_data, caption=caption
+            )
+            return True, result
+        except:
+            logging.error(traceback.format_exc())
+            return False, traceback.format_exc()
+
+
 def send_document(
     document_path, bot_key=_TELEGRAM_BOT_KEY, chat_id=_TELEGRAM_CHAT_ID, caption=""
 ):
