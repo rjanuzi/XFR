@@ -18,14 +18,15 @@ except FileNotFoundError:
 
 
 def send_simple_message(text, bot_key=_TELEGRAM_BOT_KEY, chat_id=_TELEGRAM_CHAT_ID):
-    try:
-        result = Bot(token=bot_key).send_message(
-            chat_id=chat_id, text=text, parse_mode=ParseMode.HTML
-        )
-        return True, result
-    except:
-        logging.error(traceback.format_exc())
-        return False, traceback.format_exc()
+    if bot_key and chat_id:
+        try:
+            result = Bot(token=bot_key).send_message(
+                chat_id=chat_id, text=text, parse_mode=ParseMode.HTML
+            )
+            return True, result
+        except:
+            logging.error(traceback.format_exc())
+            return False, traceback.format_exc()
 
 
 def send_img(
@@ -35,33 +36,35 @@ def send_img(
     img_binary=None,
     caption="",
 ):
-    assert img_path or img_binary
-    try:
-        img_data = (
-            InputFile(img_binary) if img_binary else InputFile(open(img_path, "rb"))
-        )
-        result = Bot(token=bot_key).send_photo(
-            chat_id=chat_id, photo=img_data, caption=caption
-        )
-        return True, result
-    except:
-        logging.error(traceback.format_exc())
-        return False, traceback.format_exc()
+    if bot_key and chat_id:
+        assert img_path or img_binary
+        try:
+            img_data = (
+                InputFile(img_binary) if img_binary else InputFile(open(img_path, "rb"))
+            )
+            result = Bot(token=bot_key).send_photo(
+                chat_id=chat_id, photo=img_data, caption=caption
+            )
+            return True, result
+        except:
+            logging.error(traceback.format_exc())
+            return False, traceback.format_exc()
 
 
 def send_document(
     document_path, bot_key=_TELEGRAM_BOT_KEY, chat_id=_TELEGRAM_CHAT_ID, caption=""
 ):
-    try:
-        result = Bot(token=bot_key).send_document(
-            chat_id=chat_id,
-            document=InputFile(open(document_path, "rb")),
-            caption=caption,
-        )
-        return True, result
-    except:
-        logging.error(traceback.format_exc())
-        return False, traceback.format_exc()
+    if bot_key and chat_id:
+        try:
+            result = Bot(token=bot_key).send_document(
+                chat_id=chat_id,
+                document=InputFile(open(document_path, "rb")),
+                caption=caption,
+            )
+            return True, result
+        except:
+            logging.error(traceback.format_exc())
+            return False, traceback.format_exc()
 
 
 def get_messages(bot_key):

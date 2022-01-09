@@ -44,7 +44,7 @@ DATASET_KIND_STR = {
 }
 
 
-def get_file_path(name: str, dataset_kind: int, file_extension: str) -> Path:
+def get_file_path(name: str, dataset_kind: int, file_extension: str = ".png") -> Path:
     try:
         return Path(DATASET_KIND_MAP[dataset_kind], name + file_extension)
     except KeyError:
