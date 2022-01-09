@@ -51,6 +51,9 @@ if __name__ == "__main__":
                     print(f"Downloading {img_name} from {drive_url}...")
                     # gdown.download(drive_url, local_img_path, quiet=True)
                     img_data = requests.get(drive_url).content
+                    if not img_data or b"!DOCTYPE html" in img_data:
+                        print(f"Error downloading {img_name}")
+                        continue
                     with open(local_img_path, "wb") as handler:
                         handler.write(img_data)
 
