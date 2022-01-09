@@ -13,7 +13,7 @@ DATASET_FOLDER = Path("dataset")
 FFHQ_FRONTAL_REF_FILE = DATASET_FOLDER.joinpath("ffhq_frontal.json")
 MAX_RETRIES = 5
 RETRY_DELAY_SECONDS = 10
-RESTART_WAIT_TIME_SECONDS = 30 * 60
+RESTART_WAIT_TIME_SECONDS = 60 * 60
 
 DATASET_RAW_DRIVE_SHARED_FOLDER = "https://drive.google.com/drive/folders/1kXjCPA-WGGhP33WKBa-dmSEdtCwkPLXD?usp=sharing"
 DATASET_ALIGNED_DRIVE_SHARED_FOLDER = "https://drive.google.com/drive/folders/1Vv0S90hy93UU4lZK8h3DQTA-kshfZA7e?usp=sharing"
