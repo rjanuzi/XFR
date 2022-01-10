@@ -109,7 +109,7 @@ def main():
     )
     parser.add_argument(
         "--iterations",
-        default=100,
+        default=200,
         help="Number of optimization steps for each batch",
         type=int,
     )
