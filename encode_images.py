@@ -2,6 +2,7 @@ import argparse
 import os
 import pickle
 from pathlib import Path
+from time import time
 
 import numpy as np
 import PIL.Image
@@ -15,6 +16,7 @@ import dnnlib.tflib as tflib
 import pretrained_networks
 from encoder.generator_model import Generator
 from encoder.perceptual_model import PerceptualModel
+from util._telegram import send_simple_message
 
 
 def split_to_batches(l, n):
@@ -564,4 +566,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    start_time = time()
+    try:
+        main()
+    except Exception as e:
+        send_simple_message(
+            f"Images enconding stoped after {int((time()-start_time)/60)} minutes..."
+        )
+        raise e
