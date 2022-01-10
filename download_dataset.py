@@ -71,7 +71,7 @@ if __name__ == "__main__":
                                 print(
                                     f"Error downloading {img_name}. Waiting {RETRY_DELAY_SECONDS} seconds to retry..."
                                 )
-                                sleep(30)
+                                sleep(RETRY_DELAY_SECONDS)
                             else:
                                 print(
                                     f"Error downloading {img_name}. Waiting {int(RESTART_WAIT_TIME_SECONDS/60)} minutes to restart process..."
@@ -80,7 +80,7 @@ if __name__ == "__main__":
                                     f"Error downloading {img_name}. Waiting {int(RESTART_WAIT_TIME_SECONDS/60)} minutes to restart process..."
                                 )
                                 tries = 0
-                                sleep(15 * 60)
+                                sleep(RESTART_WAIT_TIME_SECONDS)
                                 send_simple_message(f"Restarting download process...")
                             continue
 
