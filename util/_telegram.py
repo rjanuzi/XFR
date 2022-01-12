@@ -69,8 +69,8 @@ def send_gif(
             )
             return True, result
         except:
-            logging.error(traceback.format_exc())
             print(traceback.format_exc())
+            logging.error(traceback.format_exc())
             return False, traceback.format_exc()
 
 
