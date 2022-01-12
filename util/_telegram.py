@@ -65,11 +65,12 @@ def send_gif(
                 InputFile(gif_binary) if gif_binary else InputFile(open(gif_path, "rb"))
             )
             result = Bot(token=bot_key).send_animation(
-                chat_id=chat_id, photo=img_data, caption=caption
+                chat_id=chat_id, animation=img_data, caption=caption
             )
             return True, result
         except:
             logging.error(traceback.format_exc())
+            print(traceback.format_exc())
             return False, traceback.format_exc()
 
 
