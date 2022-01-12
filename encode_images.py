@@ -87,6 +87,7 @@ def main():
     parser.add_argument(
         "--vgg_url",
         default="https://drive.google.com/uc?id=1N2-m9qszOeVC9Tq77WxsLnuWwOedQiD2",
+        # default="https://rolux.org/media/stylegan/vgg16_zhang_perceptual.pkl",
         help="Fetch VGG model on from this URL",
     )
     parser.add_argument(
@@ -102,7 +103,7 @@ def main():
         type=int,
     )
     parser.add_argument(
-        "--lr", default=0.25, help="Learning rate for perceptual model", type=float
+        "--lr", default=0.4, help="Learning rate for perceptual model", type=float
     )
     parser.add_argument(
         "--decay_rate", default=0.9, help="Decay rate for learning rate", type=float
@@ -210,7 +211,7 @@ def main():
     )
     parser.add_argument(
         "--use_l1_penalty",
-        default=0.5,
+        default=0.2,
         help="Use L1 penalty on latents; 0 to disable, > 0 to scale.",
         type=float,
     )
@@ -222,7 +223,7 @@ def main():
     )
     parser.add_argument(
         "--use_adaptive_loss",
-        default=False,
+        default=True,
         help="Use the adaptive robust loss function from Google Research for pixel and VGG feature loss.",
         type=str2bool,
         nargs="?",
@@ -264,7 +265,7 @@ def main():
     )
     parser.add_argument(
         "--face_mask",
-        default=True,
+        default=False,
         help="Generate a mask for predicting only the face area",
         type=str2bool,
         nargs="?",
@@ -286,7 +287,7 @@ def main():
     )
     parser.add_argument(
         "--composite_mask",
-        default=True,
+        default=False,
         help="Merge the unmasked area back into the generated image",
         type=str2bool,
         nargs="?",
