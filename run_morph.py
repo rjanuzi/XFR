@@ -72,13 +72,14 @@ for _, row in latents_to_morph.iterrows():
             print(f"Failed to morph {source_a_name} with {source_b_name}")
 
         done_count += 1
-        if done_count % 10 == 0:
+        if done_count % 20 == 0:
             print(
-                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int((time()-start_time)/60)} minutes -- {int(time()-step_start_time)} seconds per pair"
             )
             send_simple_message(
-                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int(time()-start_time)} seconds -- {int(time()-step_start_time)} seconds per pair"
+                f"Morphing... {done_count}/{len(latents_to_morph)} -- ({round((done_count/len(latents_to_morph))*100.0,2)}%) -- {int((time()-start_time)/60)} minutes -- {int(time()-step_start_time)} seconds per pair"
             )
+            print(f"Sending {last_gif_path} by gif")
             send_gif(gif_path=last_gif_path, caption="Last morph result")
 
     else:
