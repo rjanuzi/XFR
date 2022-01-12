@@ -86,8 +86,8 @@ def main():
     # Perceptual model params
     parser.add_argument(
         "--vgg_url",
-        default="https://drive.google.com/uc?id=1N2-m9qszOeVC9Tq77WxsLnuWwOedQiD2",
-        # default="https://rolux.org/media/stylegan/vgg16_zhang_perceptual.pkl",
+        # default="https://drive.google.com/uc?id=1N2-m9qszOeVC9Tq77WxsLnuWwOedQiD2",
+        default="https://rolux.org/media/stylegan/vgg16_zhang_perceptual.pkl",
         help="Fetch VGG model on from this URL",
     )
     parser.add_argument(
