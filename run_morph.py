@@ -34,7 +34,6 @@ for _, row in latents_to_morph.iterrows():
     step_start_time = time()
     source_a_name = row.name_1
     source_b_name = row.name_2
-    mask_to_apply = source_a_name
 
     tmp_path = get_file_path(
         f"{source_a_name}_morph_{source_b_name}_0",
@@ -51,7 +50,7 @@ for _, row in latents_to_morph.iterrows():
     if not tmp_path.exists():
         try:
             generated_imgs = morph(
-                name_1=source_a_name, name_2=source_b_name, mask_to_apply=mask_to_apply
+                name_1=source_a_name, name_2=source_b_name, mask_to_apply=None
             )
 
             for idx, generated_img in enumerate(generated_imgs):
