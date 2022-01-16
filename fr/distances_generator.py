@@ -43,8 +43,8 @@ def gen_dlib_distances():
             if not tmp_distances:
                 tmp_distances = distancies_idx.get(tmp_key_2, {})
 
-            dlib_distancy = tmp_distances.get("dlib", None)
-            if dlib_distancy is None:
+            dlib_distance = tmp_distances.get("dlib", None)
+            if dlib_distance is None:
                 tmp_distances["dlib"] = dlib_fr.calc_distance(
                     img_path_1=path1, img_path_2=path2
                 )

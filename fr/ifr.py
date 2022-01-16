@@ -12,5 +12,5 @@ class IFr(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def check(img_path_1: Path, img_path_2: Path, distancy_tolerance: float) -> bool:
+    def check(img_path_1: Path, img_path_2: Path, distance_tolerance: float) -> bool:
         raise NotImplementedError

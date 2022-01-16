@@ -306,7 +306,7 @@ def main():
     )
     parser.add_argument(
         "--output_video",
-        default=False,
+        default=True,
         help="Generate videos of the optimization process",
         type=bool,
     )

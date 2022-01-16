@@ -33,12 +33,12 @@ class DlibFr(IFr):
         return results
 
     def check(
-        self, img_path_1: Path, img_path_2: Path, distancy_tolerance: float = 0.6
+        self, img_path_1: Path, img_path_2: Path, distance_tolerance: float = 0.6
     ):
         features_1 = self.gen_features(img_path_1)
         features_2 = self.gen_features(img_path_2)
 
         results = face_recognition.compare_faces(
-            [features_1], features_2, tolerance=distancy_tolerance
+            [features_1], features_2, tolerance=distance_tolerance
         )
         return results[0]

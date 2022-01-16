@@ -49,15 +49,19 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                 tmp_result = {
                     "name_1": name_1,
                     "name_2": name_2,
-                    "name_1_ref_distancy": [],
-                    "name_2_ref_distancy": [],
-                    "originals_distancy": None,
+                    "name_1_ref_distance": [],
+                    "name_2_ref_distance": [],
+                    "originals_distance": None,
                 }
 
-                # Generate distancy between original images
-                person_1_path = get_file_path(name=name_1, dataset_kind=DATASET_KIND_ALIGNED)
-                person_2_path = get_file_path(name=name_2, dataset_kind=DATASET_KIND_ALIGNED)
-                tmp_result["originals_distancy"] = fr.calc_distance(
+                # Generate distance between original images
+                person_1_path = get_file_path(
+                    name=name_1, dataset_kind=DATASET_KIND_ALIGNED
+                )
+                person_2_path = get_file_path(
+                    name=name_2, dataset_kind=DATASET_KIND_ALIGNED
+                )
+                tmp_result["originals_distance"] = fr.calc_distance(
                     person_1_path, person_2_path
                 )
 
@@ -67,8 +71,8 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                     tmp_other = get_file_path(
                         f"{name_1}_morph_{name_2}_{idx}", DATASET_KIND_MORPH, ".png"
                     )
-                    distancy = fr.calc_distance(ref_person, tmp_other)
-                    tmp_result["name_1_ref_distancy"].append(distancy)
+                    distance = fr.calc_distance(ref_person, tmp_other)
+                    tmp_result["name_1_ref_distance"].append(distance)
 
                 # Generate results against second person
                 ref_person = person_2_path
@@ -76,18 +80,18 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                     tmp_other = get_file_path(
                         f"{name_1}_morph_{name_2}_{idx}", DATASET_KIND_MORPH, ".png"
                     )
-                    distancy = fr.calc_distance(ref_person, tmp_other)
-                    tmp_result["name_2_ref_distancy"].append(distancy)
+                    distance = fr.calc_distance(ref_person, tmp_other)
+                    tmp_result["name_2_ref_distance"].append(distance)
 
                 results.append(tmp_result)
 
                 count_done += 1
                 if count_done % 20 == 0:
                     print(
-                        f"FR Experiment - {count_done} done. | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
+                        f"FR Experiment - {count_done} done. | {round((count_done/names_pairs)*100,2)} % | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
                     )
                     send_simple_message(
-                        f"FR Experiment - {count_done} done. | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
+                        f"FR Experiment - {count_done} done. | {round((count_done/names_pairs)*100,2)} % | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
                     )
                     json.dump(results, open(tmp_file_results, "w"))
             except:
