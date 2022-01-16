@@ -8,7 +8,6 @@ from dataset import DATASET_KIND_ALIGNED, ls_imgs_paths
 from fr.dlib import DlibFr
 
 __DISTANCES_INDEX_PATH = Path("fr", "distances_index.json")
-__BATCH_SIZE = 100
 
 
 def get_distances_idx():
@@ -28,29 +27,38 @@ def gen_dlib_distances():
     calculated_distances = 0
     total_distances = len(aligned_imgs_paths) ** 2
     start_time = time()
-    results = {}
-    for ref_path in aligned_imgs_paths:
-        for start_idx in range(0, len(aligned_imgs_paths), __BATCH_SIZE):
-            paths = aligned_imgs_paths[start_idx : start_idx + __BATCH_SIZE]
+    for path1 in aligned_imgs_paths:
+        for path2 in aligned_imgs_paths:
+            if path1 == path2:
+                continue  # skip same image
 
-            ref_path = Path(ref_path)
-            paths = [Path(p) for p in paths]
-            ref_name = ref_path.stem
-            names = [p.stem for p in paths]
+            tmp_p1 = Path(path1)
+            tmp_p2 = Path(path2)
+            name_1 = tmp_p1.stem
+            name_2 = tmp_p2.stem
+            tmp_key_1 = f"{name_1} x {name_2}"
+            tmp_key_2 = f"{name_2} x {name_1}"
 
-            distances = dlib_fr.calc_distances(
-                ref_img_path=ref_path, imgs_to_compare=paths
-            )
-            for i, distancy in enumerate(distances):
-                dlib_distance = dict(dlib=distancy)
-                results[f"{ref_name}-{names[i]}"] = dlib_distance
+            tmp_distances = distancies_idx.get(tmp_key_1, {})
+            if not tmp_distances:
+                tmp_distances = distancies_idx.get(tmp_key_2, {})
 
-            calculated_distances += __BATCH_SIZE
-            json.dump(results, open(__DISTANCES_INDEX_PATH, "w"))
-            print(
-                f"Calculating distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Loop time: {int((time() - start_time)/__BATCH_SIZE)}s"
-            )
-            start_time = time()
+            dlib_distancy = tmp_distances.get("dlib", None)
+            if dlib_distancy is None:
+                tmp_distances["dlib"] = dlib_fr.calc_distance(
+                    img_path_1=path1, img_path_2=path2
+                )
+
+                distancies_idx[tmp_key_1] = tmp_distances
+
+            calculated_distances += 1
+            if calculated_distances % 10 == 0:
+                # Backup
+                json.dump(distancies_idx, open(__DISTANCES_INDEX_PATH, "w"))
+                print(
+                    f"Calculating distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Loop time: {int((time() - start_time)/10)}s"
+                )
+                start_time = time()
 
 
 gen_dlib_distances()

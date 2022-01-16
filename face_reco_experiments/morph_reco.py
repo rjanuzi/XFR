@@ -13,6 +13,8 @@ from dataset import (
 )
 from fr.ifr import IFr
 
+from util._telegram import send_simple_message
+
 MORPH_IDX_COUNT = 19
 
 
@@ -49,10 +51,18 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                     "name_2": name_2,
                     "name_1_ref_distancy": [],
                     "name_2_ref_distancy": [],
+                    "originals_distancy": None,
                 }
 
+                # Generate distancy between original images
+                person_1_path = get_file_path(name=name_1, kind=DATASET_KIND_ALIGNED)
+                person_2_path = get_file_path(name=name_2, kind=DATASET_KIND_ALIGNED)
+                tmp_result["originals_distancy"] = fr.calc_distance(
+                    person_1_path, person_2_path
+                )
+
                 # Generate results against first person
-                ref_person = get_file_path(name_1, DATASET_KIND_ALIGNED, ".png")
+                ref_person = person_1_path
                 for idx in range(MORPH_IDX_COUNT):
                     tmp_other = get_file_path(
                         f"{name_1}_morph_{name_2}_{idx}", DATASET_KIND_MORPH, ".png"
@@ -61,7 +71,7 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                     tmp_result["name_1_ref_distancy"].append(distancy)
 
                 # Generate results against second person
-                ref_person = get_file_path(name_2, DATASET_KIND_ALIGNED, ".png")
+                ref_person = person_2_path
                 for idx in range(MORPH_IDX_COUNT):
                     tmp_other = get_file_path(
                         f"{name_1}_morph_{name_2}_{idx}", DATASET_KIND_MORPH, ".png"
@@ -72,9 +82,12 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                 results.append(tmp_result)
 
                 count_done += 1
-                if count_done % 10 == 0:
+                if count_done % 20 == 0:
                     print(
-                        f"FR Experiment done to {count_done} done. | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
+                        f"FR Experiment - {count_done} done. | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
+                    )
+                    send_simple_message(
+                        f"FR Experiment - {count_done} done. | Elapsed time: {int(time() - start_time)}s | Step time: {int(time() - loop_time)}s"
                     )
                     json.dump(results, open(tmp_file_results, "w"))
             except:
@@ -93,7 +106,11 @@ def run_fr_experiment(
                 tmp_file_name = file_name.replace("_0", "")
                 yield tmp_file_name.split("_morph_")
 
+    print("Starting FR Experiment")
+
     morphed_files_names = ls_imgs_names(DATASET_KIND_MORPH)
+
+    print(f"{len(morphed_files_names)} morphed images found.")
 
     results = generate_fr_results(
         make_pairs_generator(morphed_files_names), ifr, backup_file
