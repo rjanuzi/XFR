@@ -55,8 +55,8 @@ def generate_fr_results(names_pairs: Iterable, fr: IFr, backup_file: Path) -> li
                 }
 
                 # Generate distancy between original images
-                person_1_path = get_file_path(name=name_1, kind=DATASET_KIND_ALIGNED)
-                person_2_path = get_file_path(name=name_2, kind=DATASET_KIND_ALIGNED)
+                person_1_path = get_file_path(name=name_1, dataset_kind=DATASET_KIND_ALIGNED)
+                person_2_path = get_file_path(name=name_2, dataset_kind=DATASET_KIND_ALIGNED)
                 tmp_result["originals_distancy"] = fr.calc_distance(
                     person_1_path, person_2_path
                 )
