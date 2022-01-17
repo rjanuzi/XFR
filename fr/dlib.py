@@ -25,6 +25,10 @@ class DlibFr(IFr):
         results = face_recognition.face_distance([features_1], features_2)
         return results[0]
 
+    def calc_distance_from_features(self, img1_features: list, img2_features: Path):
+        results = face_recognition.face_distance([img1_features], img2_features)
+        return results[0]
+
     def calc_distances(self, ref_img_path: Path, imgs_to_compare: Path):
         ref_features = self.gen_features(ref_img_path)
         features_batch = [self.gen_features(i) for i in imgs_to_compare]
