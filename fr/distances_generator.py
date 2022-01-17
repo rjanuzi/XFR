@@ -94,11 +94,14 @@ def gen_dlib_distances():
                 distancies_idx[tmp_key_1] = tmp_distances
 
             calculated_distances += 1
-            if calculated_distances % 1e3 == 0:
+            if calculated_distances % 5e3 == 0:
                 # Backup
                 update_distances_idx(distancies_idx)
                 update_features_maps(features_maps)
                 print(
-                    f"Calculating distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/1e3, 2)}s"
+                    f"Calculating distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
+                )
+                send_simple_message(
+                    f"Calculating distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
                 )
                 start_loop_time = time()
