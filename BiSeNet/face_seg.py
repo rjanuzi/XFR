@@ -115,4 +115,4 @@ def evaluate(respth="./res/test_res", dspth="./data", cp="model_final_diss.pth")
 
 
 if __name__ == "__main__":
-    evaluate(dspth="./42514.png", cp="models/faces.pth")
+    evaluate(dspth="./input", cp="models/faces.pth")
