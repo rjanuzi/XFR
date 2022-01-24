@@ -11,7 +11,7 @@ from PIL import Image
 from BiSeNet.model import BiSeNet
 
 N_CLASSES = 19
-MODEL_PATH = Path("models", "faces.pth")
+MODEL_PATH = Path("BiSeNet", "models", "faces.pth")
 
 
 def vis_parsing_maps(
