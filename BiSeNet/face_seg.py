@@ -1,25 +1,28 @@
-from model import BiSeNet
+from pathlib import Path
+from time import time
+from typing import Iterable
 
-import torch
-
-import os
-import os.path as osp
-import numpy as np
-from PIL import Image
-import torchvision.transforms as transforms
 import cv2
+import numpy as np
+import torch
+import torchvision.transforms as transforms
+from PIL import Image
+
+from BiSeNet.model import BiSeNet
+
+N_CLASSES = 19
+MODEL_PATH = Path("models", "faces.pth")
 
 
 def vis_parsing_maps(
     im,
     parsing_anno,
     stride,
-    save_im=False,
-    save_path="vis_results/parsing_map_on_im.jpg",
+    save_path,
 ):
     # Colors for all 20 parts
     part_colors = [
-        [255, 0, 0],
+        [255, 0, 0],  # FF0000
         [255, 85, 0],
         [255, 170, 0],
         [255, 0, 85],
@@ -68,23 +71,19 @@ def vis_parsing_maps(
     )
 
     # Save result or not
-    if save_im:
-        cv2.imwrite(save_path[:-4] + ".png", vis_parsing_anno)
-        cv2.imwrite(save_path, vis_im, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-
-    # return vis_im
+    cv2.imwrite(save_path[:-4] + ".png", vis_parsing_anno)
+    cv2.imwrite(save_path, vis_im, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
 
-def evaluate(respth="./res/test_res", dspth="./data", cp="model_final_diss.pth"):
-
-    if not os.path.exists(respth):
-        os.makedirs(respth)
-
-    n_classes = 19
-    net = BiSeNet(n_classes=n_classes)
+def segment_images(
+    input_path_lst: Iterable,
+    output_maps_path_lst: Iterable,
+    output_imgs_path_lst: Iterable,
+    save_imgs: bool = False,
+) -> None:
+    net = BiSeNet(n_classes=N_CLASSES)
     net.cuda()
-    save_pth = osp.join("", cp)
-    net.load_state_dict(torch.load(save_pth))
+    net.load_state_dict(torch.load(MODEL_PATH))
     net.eval()
 
     to_tensor = transforms.Compose(
@@ -93,26 +92,35 @@ def evaluate(respth="./res/test_res", dspth="./data", cp="model_final_diss.pth")
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
     )
+
+    start_time = time()
+    count = 0
     with torch.no_grad():
-        for image_path in os.listdir(dspth):
-            img = Image.open(osp.join(dspth, image_path))
+        for input_img, output_map, output_img in zip(
+            input_path_lst, output_maps_path_lst, output_imgs_path_lst
+        ):
+            step_time = time()
+            img = Image.open(input_img)
             image = img.resize((512, 512), Image.BILINEAR)
             img = to_tensor(image)
             img = torch.unsqueeze(img, 0)
             img = img.cuda()
             out = net(img)[0]
             parsing = out.squeeze(0).cpu().numpy().argmax(0)
-            # print(parsing)
-            print(np.unique(parsing))
+            np.save(output_map, parsing)
 
-            vis_parsing_maps(
-                image,
-                parsing,
-                stride=1,
-                save_im=True,
-                save_path=osp.join(respth, image_path),
-            )
+            if save_imgs:
+                vis_parsing_maps(
+                    image,
+                    parsing,
+                    stride=1,
+                    save_im=True,
+                    save_path=output_img,
+                )
 
-
-if __name__ == "__main__":
-    evaluate(dspth="./input", cp="models/faces.pth")
+            count += 1
+            if count % 100 == 0:
+                print(
+                    f"Processed {count} images in {round(time() - start_time, 2)} seconds. | Step time: {round(time() - step_time, 2)}"
+                )
+                start_time = time()
