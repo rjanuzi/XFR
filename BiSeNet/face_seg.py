@@ -120,6 +120,6 @@ def segment_images(
             count += 1
             if count % 100 == 0:
                 print(
-                    f"Processed {count} images in {round(time() - start_time, 2)} seconds. | Step time: {round(time() - step_time, 2)}"
+                    f"Processed {count} images in {round(time() - start_time, 2)} s. | Step time: {round(time() - step_time, 2)} s"
                 )
                 start_time = time()
