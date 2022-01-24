@@ -83,7 +83,7 @@ def evaluate(respth="./res/test_res", dspth="./data", cp="model_final_diss.pth")
     n_classes = 19
     net = BiSeNet(n_classes=n_classes)
     net.cuda()
-    save_pth = osp.join("res/cp", cp)
+    save_pth = osp.join("", cp)
     net.load_state_dict(torch.load(save_pth))
     net.eval()
 
