@@ -12,3 +12,4 @@ test_nvcc.exp
 test_nvcc.lib
 *bkp_results.json
 *dlib_fr_results.json
+BiSeNet
