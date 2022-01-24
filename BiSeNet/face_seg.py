@@ -114,7 +114,6 @@ def segment_images(
                     image,
                     parsing,
                     stride=1,
-                    save_im=True,
                     save_path=output_img,
                 )
 
