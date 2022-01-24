@@ -71,7 +71,7 @@ def vis_parsing_maps(
     )
 
     # Save result or not
-    cv2.imwrite(save_path[:-4] + ".png", vis_parsing_anno)
+    cv2.imwrite(save_path, vis_parsing_anno)
     cv2.imwrite(save_path, vis_im, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
 
