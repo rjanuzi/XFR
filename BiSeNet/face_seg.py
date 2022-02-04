@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
+from util._telegram import send_simple_message
 
 from BiSeNet.model import BiSeNet
 
@@ -122,4 +123,6 @@ def segment_images(
                 print(
                     f"Processed {count} images in {round(time() - start_time, 2)} s. | Step time: {round(time() - step_time, 2)} s"
                 )
-                start_time = time()
+                send_simple_message(
+                    f"Processed {count} images in {round(time() - start_time, 2)} s. | Step time: {round(time() - step_time, 2)} s"
+                )

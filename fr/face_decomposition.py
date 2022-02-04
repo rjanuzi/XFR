@@ -42,66 +42,56 @@ def decompose_face(img_name: str) -> dict:
 
 def crop_roi(img_array: np.ndarray) -> np.ndarray:
     roi_idxes = np.where(img_array != 0)
-    return img_array[
+    cropped_img = img_array[
         roi_idxes[0].min() : roi_idxes[0].max(),
         roi_idxes[1].min() : roi_idxes[1].max(),
     ]
 
+    return cropped_img
+
 
 def get_face(face_parts: dict):
     face = face_parts[__FACE_CLASS]
-    return crop_roi(face)
+    return crop_roi(img_array=face)
 
 
 def get_eyes(face_parts: dict):
     left_eye = face_parts[__LEFT_EYE_CLASS]
     right_eye = face_parts[__RIGHT_EYE_CLASS]
+
     mixed = left_eye + right_eye
 
-    return crop_roi(mixed)
+    return crop_roi(img_array=mixed)
 
 
 def get_eyebrows(face_parts: dict):
     left_eyebrow = face_parts[__LEFT_EYE_BROW_CLASS]
     right_eyebrow = face_parts[__RIGHT_EYE_BROW_CLASS]
+
     mixed = left_eyebrow + right_eyebrow
 
-    return crop_roi(mixed)
+    return crop_roi(img_array=mixed)
 
 
 def get_ears(face_parts: dict):
-    try:
-        left_ear = face_parts[__LEFT_EAR_CLASS]
-    except KeyError:
-        left_ear = np.zeros(face_parts[__FACE_CLASS].shape).astype(np.uint8)
-
-    try:
-        right_ear = face_parts[__RIGHT_EAR_CLASS]
-    except KeyError:
-        right_ear = np.zeros(face_parts[__FACE_CLASS].shape).astype(np.uint8)
+    left_ear = face_parts[__LEFT_EAR_CLASS]
+    right_ear = face_parts[__RIGHT_EAR_CLASS]
 
     mixed = left_ear + right_ear
 
-    return crop_roi(mixed)
+    return crop_roi(img_array=mixed)
 
 
 def get_nose(face_parts: dict):
     nose = face_parts[__NOSE_CLASS]
-    return crop_roi(nose)
+
+    return crop_roi(img_array=nose)
 
 
 def get_mouth(face_parts: dict):
     upper_lip = face_parts[__UPPER_LIP_CLASS]
     lower_lip = face_parts[__LOWER_LIP_CLASS]
+
     mixed = upper_lip + lower_lip
 
-    return crop_roi(mixed)
-
-
-face_parts = decompose_face("01089")
-face = Image.fromarray(get_face(face_parts))
-eyes = Image.fromarray(get_eyes(face_parts))
-eyebrows = Image.fromarray(get_eyebrows(face_parts))
-ears = Image.fromarray(get_ears(face_parts))
-nose = Image.fromarray(get_nose(face_parts))
-mouth = Image.fromarray(get_mouth(face_parts))
+    return crop_roi(img_array=mixed)
