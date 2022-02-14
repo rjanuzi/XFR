@@ -8,40 +8,90 @@ from dataset import DATASET_KIND_ALIGNED, ls_imgs_paths
 from util._telegram import send_simple_message
 
 from fr.dlib import DlibFr
-from fr.hog_descriptor import calc_face_hog, compare_face_hogs
+from fr.face_decomposition import decompose_face
+from fr.hog_descriptor import (
+    HOG_OPT_ALL,
+    HOG_OPT_EARS,
+    HOG_OPT_EYEBROWS,
+    HOG_OPT_EYES,
+    HOG_OPT_FACE,
+    HOG_OPT_LEFT_EAR,
+    HOG_OPT_LEFT_EYE,
+    HOG_OPT_LEFT_EYEBROW,
+    HOG_OPT_LOWER_LIP,
+    HOG_OPT_MOUTH,
+    HOG_OPT_NOSE,
+    HOG_OPT_RIGHT_EAR,
+    HOG_OPT_RIGHT_EYE,
+    HOG_OPT_RIGHT_EYEBROW,
+    HOG_OPT_UPPER_LIP,
+    calc_hog,
+    compare_hogs,
+)
 
-__DISTANCES_INDEX_PATH = Path("fr", "distances_index.json")
-__FEATURES_MAPS_PATH = Path("fr", "features_maps.json")
+__DISTANCES_PATH = Path("fr", "distances.json")
+__DLIB_DATA_PATH = Path("fr", "dlib_data.json")
 __HOG_DATA_PATH = Path("fr", "hog_data.json")
 
 __DLIB_KEY = "dlib"
-__HOG_KEY = "hog"
+__HOG_KEY = "hog_all"
+__HOG_FACE_KEY = "hog_face"
+__HOG_LEFT_EYE_KEY = "hog_left_eye"
+__HOG_RIGHT_EYE_KEY = "hog_right_eye"
+__HOG_EYES_KEY = "hog_eyes"
+__HOG_EYEBROWS_KEY = "hog_eyebrows"
+__HOG_LEFT_EYEBROW_KEY = "hog_left_eyebrow"
+__HOG_RIGHT_EYEBROW_KEY = "hog_right_eyebrow"
+__HOG_EARS_KEY = "hog_ears"
+__HOG_LEFT_EAR_KEY = "hog_left_ear"
+__HOG_RIGHT_EAR_KEY = "hog_right_ear"
+__HOG_NOSE_KEY = "hog_nose"
+__HOG_LOWER_LIP_KEY = "hog_lower_lip"
+__HOG_UPPER_LIP_KEY = "hog_upper_lip"
+__HOG_MOUTH_KEY = "hog_mouth"
+__HOG_KEY_TO_OPT = {
+    __HOG_KEY: HOG_OPT_ALL,
+    __HOG_FACE_KEY: HOG_OPT_FACE,
+    __HOG_LEFT_EYE_KEY: HOG_OPT_LEFT_EYE,
+    __HOG_RIGHT_EYE_KEY: HOG_OPT_RIGHT_EYE,
+    __HOG_EYES_KEY: HOG_OPT_EYES,
+    __HOG_EYEBROWS_KEY: HOG_OPT_EYEBROWS,
+    __HOG_LEFT_EYEBROW_KEY: HOG_OPT_LEFT_EYEBROW,
+    __HOG_RIGHT_EYEBROW_KEY: HOG_OPT_RIGHT_EYEBROW,
+    __HOG_EARS_KEY: HOG_OPT_EARS,
+    __HOG_LEFT_EAR_KEY: HOG_OPT_LEFT_EAR,
+    __HOG_RIGHT_EAR_KEY: HOG_OPT_RIGHT_EAR,
+    __HOG_NOSE_KEY: HOG_OPT_NOSE,
+    __HOG_LOWER_LIP_KEY: HOG_OPT_LOWER_LIP,
+    __HOG_UPPER_LIP_KEY: HOG_OPT_UPPER_LIP,
+    __HOG_MOUTH_KEY: HOG_OPT_MOUTH,
+}
 
 
-def get_distances_idx():
+def get_distances():
     try:
-        return json.load(open(__DISTANCES_INDEX_PATH, "r"))
+        return json.load(open(__DISTANCES_PATH, "r"))
     except FileNotFoundError:
         distancies = {}
-        json.dump(distancies, open(__DISTANCES_INDEX_PATH, "w"))
+        json.dump(distancies, open(__DISTANCES_PATH, "w"))
         return distancies
 
 
-def update_distances_idx(new_distances_idx):
-    json.dump(new_distances_idx, open(__DISTANCES_INDEX_PATH, "w"))
+def update_distances(new_distances_idx):
+    json.dump(new_distances_idx, open(__DISTANCES_PATH, "w"))
 
 
-def get_features_maps():
+def get_dlib_data():
     try:
-        return json.load(open(__FEATURES_MAPS_PATH, "r"))
+        return json.load(open(__DLIB_DATA_PATH, "r"))
     except FileNotFoundError:
         features_maps = {}
-        json.dump(features_maps, open(__FEATURES_MAPS_PATH, "w"))
+        json.dump(features_maps, open(__DLIB_DATA_PATH, "w"))
         return features_maps
 
 
-def update_features_maps(new_features_maps):
-    json.dump(new_features_maps, open(__FEATURES_MAPS_PATH, "w"))
+def update_dlib_data(new_features_maps):
+    json.dump(new_features_maps, open(__DLIB_DATA_PATH, "w"))
 
 
 def get_hog_data():
@@ -58,8 +108,8 @@ def update_hog_data(new_hog_data):
 
 
 def gen_dlib_distances():
-    distancies_idx = get_distances_idx()
-    features_maps = get_features_maps()
+    distances_idx = get_distances()
+    features_maps = get_dlib_data()
     aligned_imgs_paths = ls_imgs_paths(kind=DATASET_KIND_ALIGNED)
     dlib_fr = DlibFr()
 
@@ -70,6 +120,7 @@ def gen_dlib_distances():
     for path1 in aligned_imgs_paths:
         for path2 in aligned_imgs_paths:
             if path1 == path2:
+                calculated_distances += 1
                 continue  # skip same image
 
             tmp_p1 = Path(path1)
@@ -79,9 +130,9 @@ def gen_dlib_distances():
             tmp_key_1 = f"{name_1} x {name_2}"
             tmp_key_2 = f"{name_2} x {name_1}"
 
-            tmp_distances = distancies_idx.get(tmp_key_1, {})
+            tmp_distances = distances_idx.get(tmp_key_1, {})
             if not tmp_distances:
-                tmp_distances = distancies_idx.get(tmp_key_2, {})
+                tmp_distances = distances_idx.get(tmp_key_2, {})
 
             dlib_distance = tmp_distances.get(__DLIB_KEY, None)
             if dlib_distance is None:
@@ -108,32 +159,32 @@ def gen_dlib_distances():
                     img2_features=np.asarray(img2_features),
                 )
 
-                distancies_idx[tmp_key_1] = tmp_distances
+                distances_idx[tmp_key_1] = tmp_distances
 
             calculated_distances += 1
-            if calculated_distances % 1e4 == 0:
+            if calculated_distances % 5e2 == 0:
                 # Backup
-                update_distances_idx(distancies_idx)
-                update_features_maps(features_maps)
+                update_distances(distances_idx)
+                update_dlib_data(features_maps)
                 print(
-                    f"Calculating DLIB distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
+                    f"Calculating DLIB distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Loop time: {round((time() - start_loop_time)/5e3, 4)} s"
                 )
+            if calculated_distances % 5e4 == 0:
                 send_simple_message(
-                    f"Calculating DLIB distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
+                    f"Calculating DLIB distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Loop time: {round((time() - start_loop_time)/5e3, 4)} s"
                 )
-                start_loop_time = time()
+            start_loop_time = time()
 
-    update_distances_idx(distancies_idx)
-    update_features_maps(features_maps)
+    update_distances(distances_idx)
+    update_dlib_data(features_maps)
     print(f"DLIB Disances calculation done. Total time: {int(time() - start_time)}")
     send_simple_message(
         f"DLIB Disances calculation done. Total time: {int(time() - start_time)}"
     )
-    start_loop_time = time()
 
 
 def gen_hog_distances():
-    distancies_idx = get_distances_idx()
+    distances_idx = get_distances()
     hog_data = get_hog_data()
     aligned_imgs_paths = ls_imgs_paths(kind=DATASET_KIND_ALIGNED)
 
@@ -144,6 +195,7 @@ def gen_hog_distances():
     for path1 in aligned_imgs_paths:
         for path2 in aligned_imgs_paths:
             if path1 == path2:
+                calculated_distances += 1
                 continue  # skip same image
 
             tmp_p1 = Path(path1)
@@ -153,69 +205,219 @@ def gen_hog_distances():
             tmp_key_1 = f"{name_1} x {name_2}"
             tmp_key_2 = f"{name_2} x {name_1}"
 
-            tmp_distances = distancies_idx.get(tmp_key_1, {})
+            tmp_distances = distances_idx.get(tmp_key_1, {})
             if not tmp_distances:
-                tmp_distances = distancies_idx.get(tmp_key_2, {})
+                tmp_distances = distances_idx.get(tmp_key_2, {})
 
             hog_distance = tmp_distances.get(__HOG_KEY, None)
             if hog_distance is None:
                 img1_features = hog_data.get(name_1, None)
                 if img1_features is None:
-                    try:
-                        img1_features = calc_face_hog(name_1)
-                    except (ValueError, KeyError):
-                        tmp_distances[__HOG_KEY] = inf
-                        continue  # Ignore images with no faces
+                    # Calculate hog features
+                    face_parts = decompose_face(name_1)
+                    all_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_ALL)
+                    face_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_FACE)
+                    left_eye_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EYE
+                    )
+                    right_eye_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EYE
+                    )
+                    eyes_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_EYES)
+                    left_eyebrow_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EYEBROW
+                    )
+                    right_eyebrow_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EYEBROW
+                    )
+                    eyebrows_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_EYEBROWS
+                    )
+                    left_ear_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EAR
+                    )
+                    right_ear_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EAR
+                    )
+                    ears_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_EARS)
+                    nose_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_NOSE)
+                    lower_lip_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LOWER_LIP
+                    )
+                    upper_lip_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_UPPER_LIP
+                    )
+                    mouth_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_MOUTH)
 
-                    hog_data[name_1] = {__HOG_KEY: img1_features.tolist()}
-                elif img1_features.get(__HOG_KEY, None) is None:
-                    try:
-                        img1_features[__HOG_KEY] = calc_face_hog(name_1).tolist()
-                    except (ValueError, KeyError):
-                        tmp_distances[__HOG_KEY] = inf
-                        continue  # Ignore images with no faces
-                else:
-                    img1_features = img1_features[__HOG_KEY]
+                    # Save HOG features
+                    hog_data[name_1] = {
+                        __HOG_KEY: all_features.tolist()
+                        if all_features is not None
+                        else False,
+                        __HOG_FACE_KEY: face_features.tolist()
+                        if face_features is not None
+                        else False,
+                        __HOG_LEFT_EYE_KEY: left_eye_features.tolist()
+                        if left_eye_features is not None
+                        else False,
+                        __HOG_RIGHT_EYE_KEY: right_eye_features.tolist()
+                        if right_eye_features is not None
+                        else False,
+                        __HOG_EYES_KEY: eyes_features.tolist(),
+                        __HOG_LEFT_EYEBROW_KEY: left_eyebrow_features.tolist()
+                        if left_eyebrow_features is not None
+                        else False,
+                        __HOG_RIGHT_EYEBROW_KEY: right_eyebrow_features.tolist()
+                        if right_eyebrow_features is not None
+                        else False,
+                        __HOG_EYEBROWS_KEY: eyebrows_features.tolist()
+                        if eyebrows_features is not None
+                        else False,
+                        __HOG_LEFT_EAR_KEY: left_ear_features.tolist()
+                        if left_ear_features is not None
+                        else False,
+                        __HOG_RIGHT_EAR_KEY: right_ear_features.tolist()
+                        if right_ear_features is not None
+                        else False,
+                        __HOG_EARS_KEY: ears_features.tolist()
+                        if ears_features is not None
+                        else False,
+                        __HOG_NOSE_KEY: nose_features.tolist()
+                        if nose_features is not None
+                        else False,
+                        __HOG_LOWER_LIP_KEY: lower_lip_features.tolist()
+                        if lower_lip_features is not None
+                        else False,
+                        __HOG_UPPER_LIP_KEY: upper_lip_features.tolist()
+                        if upper_lip_features is not None
+                        else False,
+                        __HOG_MOUTH_KEY: mouth_features.tolist()
+                        if mouth_features is not None
+                        else False,
+                    }
+
+                    img1_features = hog_data[name_1]
 
                 img2_features = hog_data.get(name_2, None)
                 if img2_features is None:
-                    try:
-                        img2_features = calc_face_hog(name_2)
-                    except (ValueError, KeyError):
-                        tmp_distances[__HOG_KEY] = inf
-                        continue  # Ignore images with no faces
-                    hog_data[name_2] = {__HOG_KEY: img2_features.tolist()}
-                elif img2_features.get(__HOG_KEY, None) is None:
-                    try:
-                        img2_features[__HOG_KEY] = calc_face_hog(name_2).tolist()
-                    except (ValueError, KeyError):
-                        tmp_distances[__HOG_KEY] = inf
-                        continue  # Ignore images with no faces
-                else:
-                    img2_features = img2_features[__HOG_KEY]
+                    # Calculate hog features
+                    face_parts = decompose_face(name_2)
+                    all_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_ALL)
+                    face_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_FACE)
+                    left_eye_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EYE
+                    )
+                    right_eye_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EYE
+                    )
+                    eyes_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_EYES)
+                    left_eyebrow_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EYEBROW
+                    )
+                    right_eyebrow_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EYEBROW
+                    )
+                    eyebrows_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_EYEBROWS
+                    )
+                    left_ear_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LEFT_EAR
+                    )
+                    right_ear_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_RIGHT_EAR
+                    )
+                    ears_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_EARS)
+                    nose_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_NOSE)
+                    lower_lip_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_LOWER_LIP
+                    )
+                    upper_lip_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_UPPER_LIP
+                    )
+                    mouth_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_MOUTH)
 
-                tmp_distances[__HOG_KEY] = compare_face_hogs(
-                    face_hog_1=np.asarray(img1_features),
-                    face_hog_2=np.asarray(img2_features),
-                )
+                    # Save HOG features
+                    hog_data[name_2] = {
+                        __HOG_KEY: all_features.tolist()
+                        if all_features is not None
+                        else False,
+                        __HOG_FACE_KEY: face_features.tolist()
+                        if face_features is not None
+                        else False,
+                        __HOG_LEFT_EYE_KEY: left_eye_features.tolist()
+                        if left_eye_features is not None
+                        else False,
+                        __HOG_RIGHT_EYE_KEY: right_eye_features.tolist()
+                        if right_eye_features is not None
+                        else False,
+                        __HOG_EYES_KEY: eyes_features.tolist()
+                        if eyes_features is not None
+                        else False,
+                        __HOG_LEFT_EYEBROW_KEY: left_eyebrow_features.tolist()
+                        if left_eyebrow_features is not None
+                        else False,
+                        __HOG_RIGHT_EYEBROW_KEY: right_eyebrow_features.tolist()
+                        if right_eyebrow_features is not None
+                        else False,
+                        __HOG_EYEBROWS_KEY: eyebrows_features.tolist()
+                        if eyebrows_features is not None
+                        else False,
+                        __HOG_LEFT_EAR_KEY: left_ear_features.tolist()
+                        if left_ear_features is not None
+                        else False,
+                        __HOG_RIGHT_EAR_KEY: right_ear_features.tolist()
+                        if right_ear_features is not None
+                        else False,
+                        __HOG_EARS_KEY: ears_features.tolist()
+                        if ears_features is not None
+                        else False,
+                        __HOG_NOSE_KEY: nose_features.tolist()
+                        if nose_features is not None
+                        else False,
+                        __HOG_LOWER_LIP_KEY: lower_lip_features.tolist()
+                        if lower_lip_features is not None
+                        else False,
+                        __HOG_UPPER_LIP_KEY: upper_lip_features.tolist()
+                        if upper_lip_features is not None
+                        else False,
+                        __HOG_MOUTH_KEY: mouth_features.tolist()
+                        if mouth_features is not None
+                        else False,
+                    }
 
-                distancies_idx[tmp_key_1] = tmp_distances
+                    img2_features = hog_data[name_2]
+
+                for key, tmp_features_1 in img1_features.items():
+                    tmp_features_2 = img2_features.get(key)
+                    if tmp_features_1 == False or tmp_features_2 == False:
+                        tmp_distances[key] = inf
+                    else:
+                        tmp_distances[key] = compare_hogs(
+                            hog_1=np.asarray(tmp_features_1),
+                            hog_2=np.asarray(tmp_features_2),
+                            opt=__HOG_KEY_TO_OPT[key],
+                        )
+
+                distances_idx[tmp_key_1] = tmp_distances
 
             calculated_distances += 1
-            if calculated_distances % 1e4 == 0:
+            if calculated_distances % 5e2 == 0:
                 # Backup
-                update_distances_idx(distancies_idx)
-                update_features_maps(hog_data)
+                update_distances(distances_idx)
+                update_hog_data(hog_data)
                 print(
-                    f"Calculating HOG distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
+                    f"Calculating HOG distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Loop time: {round((time() - start_loop_time)/5e3, 4)} s"
                 )
-                send_simple_message(
-                    f"Calculating HOG distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} | Loop time: {round((time() - start_loop_time)/5e3, 4)}s"
-                )
-                start_loop_time = time()
 
-    update_distances_idx(distancies_idx)
-    update_features_maps(hog_data)
+            if calculated_distances % 5e4 == 0:
+                send_simple_message(
+                    f"Calculating HOG distances... {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Loop time: {round((time() - start_loop_time)/5e3, 4)} s"
+                )
+
+            start_loop_time = time()
+
+    update_distances(distances_idx)
+    update_hog_data(hog_data)
     print(f"HOG Distances calculation done. Total time: {int(time() - start_time)}")
     send_simple_message(
         f"HOG Distances calculation done. Total time: {int(time() - start_time)}"
