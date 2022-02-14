@@ -5,7 +5,7 @@ from util._telegram import send_simple_message
 
 if __name__ == "__main__":
     try:
-        # gen_dlib_distances()
+        gen_dlib_distances()
         gen_hog_distances()
         send_simple_message("Gen distances matrix done!")
     except:
