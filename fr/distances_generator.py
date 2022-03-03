@@ -184,7 +184,7 @@ def gen_dlib_distances():
             end_loop_time = time()
             if calculated_distances % 1e5 == 0:
                 send_simple_message(
-                    f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+                    f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
                 )
 
         # Save results
@@ -200,7 +200,7 @@ def gen_dlib_distances():
         )
 
         logging.info(
-            f"{calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+            f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
         )
 
     # Final messages
@@ -450,7 +450,7 @@ def gen_hog_distances():
             end_loop_time = time()
             if calculated_distances % 1e5 == 0:
                 send_simple_message(
-                    f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+                    f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
                 )
 
         # Update results
@@ -467,7 +467,7 @@ def gen_hog_distances():
             f"HOG Distances calculation done for {name_1}. Total time: {int(time() - start_time)} s"
         )
         logging.info(
-            f"{calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+            f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
         )
 
         ####################################################################
