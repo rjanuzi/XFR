@@ -1,4 +1,5 @@
 import json
+import logging
 from math import inf
 from pathlib import Path
 from time import time
@@ -135,11 +136,11 @@ def gen_dlib_distances():
             img1_features = dlib_fr.gen_features(path1)
             dlib_data[name_1] = {__DLIB_KEY: img1_features.tolist()}
             dlib_data_changed = True
-            print(f"DLIB data calculated (1) for {name_1}")
+            logging.info(f"DLIB data calculated (1) for {name_1}")
         elif img1_features.get(__DLIB_KEY, None) is None:
             img1_features[__DLIB_KEY] = dlib_fr.gen_features(path1).tolist()
             dlib_data_changed = True
-            print(f"DLIB data calculated (2) for {name_1}")
+            logging.info(f"DLIB data calculated (2) for {name_1}")
         else:
             img1_features = img1_features[__DLIB_KEY]
 
@@ -163,11 +164,11 @@ def gen_dlib_distances():
                     img2_features = dlib_fr.gen_features(path2)
                     dlib_data[name_2] = {__DLIB_KEY: img2_features.tolist()}
                     dlib_data_changed = True
-                    print(f"DLIB data calculated (1) for {name_2}")
+                    logging.info(f"DLIB data calculated (1) for {name_2}")
                 elif img2_features.get(__DLIB_KEY, None) is None:
                     img2_features[__DLIB_KEY] = dlib_fr.gen_features(path2).tolist()
                     dlib_data_changed = True
-                    print(f"DLIB data calculated (2) for {name_2}")
+                    logging.info(f"DLIB data calculated (2) for {name_2}")
                 else:
                     img2_features = img2_features[__DLIB_KEY]
 
@@ -181,30 +182,31 @@ def gen_dlib_distances():
 
             calculated_distances += 1
             end_loop_time = time()
+            if calculated_distances % 1e5 == 0:
+                send_simple_message(
+                    f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+                )
 
         # Save results
         update_distances(distances)
         if dlib_data_changed:
-            print("Updating DLIB Data.")
+            logging.info("Updating DLIB Data.")
             update_dlib_data(dlib_data)
             dlib_data_changed = False
 
         # Inform state
-        print(
+        logging.info(
             f"DLIB Distances calculation done for {name_1}. Total time: {int(time() - start_time)} s"
         )
 
-        print(
+        logging.info(
             f"{calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
         )
 
-        if calculated_distances % 1e5 == 0:
-            send_simple_message(
-                f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
-            )
-
     # Final messages
-    print(f"DLIB Distances calculation done. Total time: {int(time() - start_time)} s")
+    logging.info(
+        f"DLIB Distances calculation done. Total time: {int(time() - start_time)} s"
+    )
     send_simple_message(
         f"DLIB Distances calculation done. Total time: {int(time() - start_time)} s"
     )
@@ -305,7 +307,7 @@ def gen_hog_distances():
             img1_features = hog_data[name_1]
 
             hog_data_changed = True
-            print(f"HOG data calculated for {name_1}")
+            logging.info(f"HOG data calculated for {name_1}")
 
         ####################################################################
         # eff_exp_data["calc_img1"].append(time() - tmp_start_time)
@@ -423,7 +425,7 @@ def gen_hog_distances():
                     img2_features = hog_data[name_2]
 
                     hog_data_changed = True
-                    print(f"HOG data calculated for {name_2}")
+                    logging.info(f"HOG data calculated for {name_2}")
 
                 ####################################################################
                 # eff_exp_data["calc_img2"].append(time() - tmp_start_time)
@@ -443,36 +445,30 @@ def gen_hog_distances():
                         )
 
                 distances[tmp_key_1] = tmp_distances
-                calculated_distances += 1
 
-                ####################################################################
-                # eff_exp_data["calc_sim"].append(time() - tmp_start_time)
-                # tmp_start_time = time()
-                ####################################################################
-
+            calculated_distances += 1
             end_loop_time = time()
+            if calculated_distances % 1e5 == 0:
+                send_simple_message(
+                    f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
+                )
 
         # Update results
         update_distances(distances)
 
         # Update HOG Tmp data if needed
         if hog_data_changed:
-            print("Updating HOG Data.")
+            logging.info("Updating HOG Data.")
             update_hog_data(hog_data)
             hog_data_changed = False
 
         # Inform state
-        print(
+        logging.info(
             f"HOG Distances calculation done for {name_1}. Total time: {int(time() - start_time)} s"
         )
-        print(
+        logging.info(
             f"{calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
         )
-
-        if calculated_distances % 1e5 == 0:
-            send_simple_message(
-                f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round((end_loop_time - start_loop_time)/5e3, 4)} s"
-            )
 
         ####################################################################
         # with open("eff_exp_data.json", "w") as fp:
@@ -480,7 +476,9 @@ def gen_hog_distances():
         ####################################################################
 
     # Final messages
-    print(f"HOG Distances calculation done. Total time: {int(time() - start_time)} s")
+    logging.info(
+        f"HOG Distances calculation done. Total time: {int(time() - start_time)} s"
+    )
     send_simple_message(
         f"HOG Distances calculation done. Total time: {int(time() - start_time)} s"
     )
