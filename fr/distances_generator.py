@@ -200,12 +200,12 @@ def gen_dlib_distances():
                     f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
                 )
 
-        # Save results
-        update_distances(distances)
-        if dlib_data_changed:
-            logging.info("Updating DLIB Data.")
-            update_dlib_data(dlib_data)
-            dlib_data_changed = False
+                # Save results
+                update_distances(distances)
+                if dlib_data_changed:
+                    logging.info("Updating DLIB Data.")
+                    update_dlib_data(dlib_data)
+                    dlib_data_changed = False
 
         # Inform state
         logging.info(
@@ -215,6 +215,9 @@ def gen_dlib_distances():
         logging.info(
             f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
         )
+
+    # Save final results
+    update_distances(distances)
 
     # Final messages
     logging.info(
@@ -491,14 +494,14 @@ def gen_hog_distances():
                     f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
                 )
 
-        # Update results
-        update_distances(distances)
+                # Update results
+                update_distances(distances)
 
-        # Update HOG Tmp data if needed
-        if hog_data_changed:
-            logging.info("Updating HOG Data.")
-            update_hog_data(hog_data)
-            hog_data_changed = False
+                # Update HOG Tmp data if needed
+                if hog_data_changed:
+                    logging.info("Updating HOG Data.")
+                    update_hog_data(hog_data)
+                    hog_data_changed = False
 
         # Inform state
         logging.info(
@@ -507,6 +510,9 @@ def gen_hog_distances():
         logging.info(
             f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
         )
+
+    # Save final results
+    update_distances(distances)
 
     # Final messages
     logging.info(
