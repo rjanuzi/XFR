@@ -212,3 +212,68 @@ def get_mouth(face_parts: dict, use_hog_proportion=False):
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
+
+
+def get_mouth_and_nose(face_parts: dict, use_hog_proportion=False):
+    try:
+        upper_lip = face_parts[__UPPER_LIP_CLASS]
+        lower_lip = face_parts[__LOWER_LIP_CLASS]
+        nose = face_parts[__NOSE_CLASS]
+
+        mixed = upper_lip + lower_lip + nose
+
+        return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+    except KeyError:
+        return None
+
+
+def get_eyes_and_eyebrows(face_parts: dict, use_hog_proportion=False):
+    try:
+        left_eye = face_parts[__LEFT_EYE_CLASS]
+        right_eye = face_parts[__RIGHT_EYE_CLASS]
+        left_eyebrow = face_parts[__LEFT_EYE_BROW_CLASS]
+        right_eyebrow = face_parts[__RIGHT_EYE_BROW_CLASS]
+
+        mixed = left_eye + right_eye + left_eyebrow + right_eyebrow
+
+        return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+    except KeyError:
+        return None
+
+
+def get_eyes_and_nose(face_parts: dict, use_hog_proportion=False):
+    try:
+        left_eye = face_parts[__LEFT_EYE_CLASS]
+        right_eye = face_parts[__RIGHT_EYE_CLASS]
+        nose = face_parts[__NOSE_CLASS]
+
+        mixed = left_eye + right_eye + nose
+
+        return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+    except KeyError:
+        return None
+
+
+def get_full_face(face_parts: dict, use_hog_proportion=False):
+    try:
+        face = face_parts[__FACE_CLASS]
+        left_eye = face_parts[__LEFT_EYE_CLASS]
+        right_eye = face_parts[__RIGHT_EYE_CLASS]
+        left_eyebrow = face_parts[__LEFT_EYE_BROW_CLASS]
+        right_eyebrow = face_parts[__RIGHT_EYE_BROW_CLASS]
+        nose = face_parts[__NOSE_CLASS]
+        upper_lip = face_parts[__UPPER_LIP_CLASS]
+        lower_lip = face_parts[__LOWER_LIP_CLASS]
+
+        mixed = face
+        mixed += left_eye
+        mixed += right_eye
+        mixed += left_eyebrow
+        mixed += right_eyebrow
+        mixed += nose
+        mixed += upper_lip
+        mixed += lower_lip
+
+        return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+    except KeyError:
+        return None

@@ -3,20 +3,24 @@ from cv2 import HOGDescriptor
 from PIL import Image, ImageOps
 
 from fr.face_decomposition import (
-    get_face,
-    get_eyes,
-    get_eyebrows,
     get_ears,
-    get_left_eye,
-    get_right_eye,
-    get_nose,
-    get_left_eyebrow,
-    get_rigth_eyebrow,
+    get_eyebrows,
+    get_eyes,
+    get_eyes_and_eyebrows,
+    get_eyes_and_nose,
+    get_face,
+    get_full_face,
     get_left_ear,
-    get_right_ear,
+    get_left_eye,
+    get_left_eyebrow,
     get_lower_lip,
-    get_upper_lip,
     get_mouth,
+    get_mouth_and_nose,
+    get_nose,
+    get_right_ear,
+    get_right_eye,
+    get_rigth_eyebrow,
+    get_upper_lip,
 )
 
 __HOG_DEFAULT_SIZE = (64, 128)
@@ -42,6 +46,31 @@ HOG_OPT_LEFT_EAR = 11
 HOG_OPT_RIGHT_EAR = 12
 HOG_OPT_LOWER_LIP = 13
 HOG_OPT_UPPER_LIP = 14
+HOG_OPT_MOUTH_AND_NOSE = 15
+HOG_OPT_EYES_AND_EYEBROWS = 16
+HOG_OPT_EYES_AND_NOSE = 17
+HOG_OPT_FULL_FACE = 18
+
+__calc_hog_funcs = {
+    HOG_OPT_FACE: get_face,
+    HOG_OPT_LEFT_EYE: get_left_eye,
+    HOG_OPT_RIGHT_EYE: get_right_eye,
+    HOG_OPT_EYES: get_eyes,
+    HOG_OPT_LEFT_EYEBROW: get_left_eyebrow,
+    HOG_OPT_RIGHT_EYEBROW: get_rigth_eyebrow,
+    HOG_OPT_EYEBROWS: get_eyebrows,
+    HOG_OPT_LEFT_EAR: get_left_ear,
+    HOG_OPT_RIGHT_EAR: get_right_ear,
+    HOG_OPT_EARS: get_ears,
+    HOG_OPT_NOSE: get_nose,
+    HOG_OPT_LOWER_LIP: get_lower_lip,
+    HOG_OPT_UPPER_LIP: get_upper_lip,
+    HOG_OPT_MOUTH: get_mouth,
+    HOG_OPT_MOUTH_AND_NOSE: get_mouth_and_nose,
+    HOG_OPT_EYES_AND_EYEBROWS: get_eyes_and_eyebrows,
+    HOG_OPT_EYES_AND_NOSE: get_eyes_and_nose,
+    HOG_OPT_FULL_FACE: get_full_face,
+}
 
 
 def adjust_img_to_hog(img_array: np.array):
@@ -53,6 +82,7 @@ def adjust_img_to_hog(img_array: np.array):
 
 
 def calc_hog(face_parts: dict, opt: int):
+
     if opt == HOG_OPT_ALL:
         face = get_face(face_parts, use_hog_proportion=True)
         eyes = get_eyes(face_parts, use_hog_proportion=True)
@@ -94,118 +124,16 @@ def calc_hog(face_parts: dict, opt: int):
         )
 
         return seg_hogs
-    elif opt == HOG_OPT_FACE:
-        face = get_face(face_parts, use_hog_proportion=True)
-        if face is None:
+    else:
+        # Use the function to get the face parts according to the option
+        face_elements = __calc_hog_funcs[opt](face_parts, use_hog_proportion=True)
+        if face_elements is None:
             return None
-        face = adjust_img_to_hog(face)
-        hog = HOGDescriptor()
-        face_hog = hog.compute(face)
-        return face_hog
-    elif opt == HOG_OPT_LEFT_EYE:
-        left_eye = get_left_eye(face_parts, use_hog_proportion=True)
-        if left_eye is None:
-            return None
-        left_eye = adjust_img_to_hog(left_eye)
-        hog = HOGDescriptor()
-        left_eye_hog = hog.compute(left_eye)
-        return left_eye_hog
-    elif opt == HOG_OPT_RIGHT_EYE:
-        right_eye = get_right_eye(face_parts, use_hog_proportion=True)
-        if right_eye is None:
-            return None
-        right_eye = adjust_img_to_hog(right_eye)
-        hog = HOGDescriptor()
-        right_eye_hog = hog.compute(right_eye)
-        return right_eye_hog
-    elif opt == HOG_OPT_EYES:
-        eyes = get_eyes(face_parts, use_hog_proportion=True)
-        if eyes is None:
-            return None
-        eyes = adjust_img_to_hog(eyes)
-        hog = HOGDescriptor()
-        eyes_hog = hog.compute(eyes)
-        return eyes_hog
-    elif opt == HOG_OPT_LEFT_EYEBROW:
-        left_eyebrow = get_left_eyebrow(face_parts, use_hog_proportion=True)
-        if left_eyebrow is None:
-            return None
-        left_eyebrow = adjust_img_to_hog(left_eyebrow)
-        hog = HOGDescriptor()
-        left_eyebrow_hog = hog.compute(left_eyebrow)
-        return left_eyebrow_hog
-    elif opt == HOG_OPT_RIGHT_EYEBROW:
-        right_eyebrow = get_rigth_eyebrow(face_parts, use_hog_proportion=True)
-        if right_eyebrow is None:
-            return None
-        right_eyebrow = adjust_img_to_hog(right_eyebrow)
-        hog = HOGDescriptor()
-        right_eyebrow_hog = hog.compute(right_eyebrow)
-        return right_eyebrow_hog
-    elif opt == HOG_OPT_EYEBROWS:
-        eyebrows = get_eyebrows(face_parts, use_hog_proportion=True)
-        if eyebrows is None:
-            return None
-        eyebrows = adjust_img_to_hog(eyebrows)
-        hog = HOGDescriptor()
-        eyebrows_hog = hog.compute(eyebrows)
-        return eyebrows_hog
-    elif opt == HOG_OPT_LEFT_EAR:
-        left_ear = get_left_ear(face_parts, use_hog_proportion=True)
-        if left_ear is None:
-            return None
-        left_ear = adjust_img_to_hog(left_ear)
-        hog = HOGDescriptor()
-        left_ear_hog = hog.compute(left_ear)
-        return left_ear_hog
-    elif opt == HOG_OPT_RIGHT_EAR:
-        right_ear = get_right_ear(face_parts, use_hog_proportion=True)
-        if right_ear is None:
-            return None
-        right_ear = adjust_img_to_hog(right_ear)
-        hog = HOGDescriptor()
-        right_ear_hog = hog.compute(right_ear)
-        return right_ear_hog
-    elif opt == HOG_OPT_EARS:
-        ears = get_ears(face_parts, use_hog_proportion=True)
-        if ears is None:
-            return None
-        ears = adjust_img_to_hog(ears)
-        hog = HOGDescriptor()
-        ears_hog = hog.compute(ears)
-        return ears_hog
-    elif opt == HOG_OPT_NOSE:
-        nose = get_nose(face_parts, use_hog_proportion=True)
-        if nose is None:
-            return None
-        nose = adjust_img_to_hog(nose)
-        hog = HOGDescriptor()
-        nose_hog = hog.compute(nose)
-        return nose_hog
-    elif opt == HOG_OPT_LOWER_LIP:
-        lower_lip = get_lower_lip(face_parts, use_hog_proportion=True)
-        if lower_lip is None:
-            return None
-        lower_lip = adjust_img_to_hog(lower_lip)
-        hog = HOGDescriptor()
-        lower_lip_hog = hog.compute(lower_lip)
-        return lower_lip_hog
-    elif opt == HOG_OPT_UPPER_LIP:
-        upper_lip = get_upper_lip(face_parts, use_hog_proportion=True)
-        if upper_lip is None:
-            return None
-        upper_lip = adjust_img_to_hog(upper_lip)
-        hog = HOGDescriptor()
-        upper_lip_hog = hog.compute(upper_lip)
-        return upper_lip_hog
-    elif opt == HOG_OPT_MOUTH:
-        mouth = get_mouth(face_parts, use_hog_proportion=True)
-        if mouth is None:
-            return None
-        mouth = adjust_img_to_hog(mouth)
-        hog = HOGDescriptor()
-        mouth_hog = hog.compute(mouth)
-        return mouth_hog
+        else:
+            face_elements = adjust_img_to_hog(face_elements)
+            hog = HOGDescriptor()
+            face_elements_hog = hog.compute(face_elements)
+            return face_elements_hog
 
 
 def compare_hogs(hog_1: np.array, hog_2: np.array, opt: int):

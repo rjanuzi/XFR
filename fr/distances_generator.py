@@ -15,12 +15,16 @@ from fr.hog_descriptor import (
     HOG_OPT_EARS,
     HOG_OPT_EYEBROWS,
     HOG_OPT_EYES,
+    HOG_OPT_EYES_AND_EYEBROWS,
+    HOG_OPT_EYES_AND_NOSE,
     HOG_OPT_FACE,
+    HOG_OPT_FULL_FACE,
     HOG_OPT_LEFT_EAR,
     HOG_OPT_LEFT_EYE,
     HOG_OPT_LEFT_EYEBROW,
     HOG_OPT_LOWER_LIP,
     HOG_OPT_MOUTH,
+    HOG_OPT_MOUTH_AND_NOSE,
     HOG_OPT_NOSE,
     HOG_OPT_RIGHT_EAR,
     HOG_OPT_RIGHT_EYE,
@@ -51,6 +55,11 @@ __HOG_NOSE_KEY = "hog_nose"
 __HOG_LOWER_LIP_KEY = "hog_lower_lip"
 __HOG_UPPER_LIP_KEY = "hog_upper_lip"
 __HOG_MOUTH_KEY = "hog_mouth"
+__HOG_MOUTH_AND_NOSE_KEY = "hog_mouth_and_nose"
+__HOG_EYES_AND_EYEBROWS_KEY = "hog_eyes_and_eyebrows"
+__HOG_EYES_AND_NOSE_KEY = "hog_eyes_and_nose"
+__HOG_FULL_FACE_KEY = "hog_full_face"
+
 __HOG_KEY_TO_OPT = {
     __HOG_KEY: HOG_OPT_ALL,
     __HOG_FACE_KEY: HOG_OPT_FACE,
@@ -67,6 +76,10 @@ __HOG_KEY_TO_OPT = {
     __HOG_LOWER_LIP_KEY: HOG_OPT_LOWER_LIP,
     __HOG_UPPER_LIP_KEY: HOG_OPT_UPPER_LIP,
     __HOG_MOUTH_KEY: HOG_OPT_MOUTH,
+    __HOG_MOUTH_AND_NOSE_KEY: HOG_OPT_MOUTH_AND_NOSE,
+    __HOG_EYES_AND_EYEBROWS_KEY: HOG_OPT_EYES_AND_EYEBROWS,
+    __HOG_EYES_AND_NOSE_KEY: HOG_OPT_EYES_AND_NOSE,
+    __HOG_FULL_FACE_KEY: HOG_OPT_FULL_FACE,
 }
 
 
@@ -217,10 +230,6 @@ def gen_hog_distances():
     hog_data = get_hog_data()
     aligned_imgs_paths = ls_imgs_paths(kind=DATASET_KIND_ALIGNED)
 
-    ####################################################################
-    # eff_exp_data = dict(calc_img1=[], calc_img2=[], calc_sim=[])
-    ####################################################################
-
     calculated_distances = 0
     hog_data_changed = False
     total_distances = len(aligned_imgs_paths) ** 2
@@ -229,10 +238,6 @@ def gen_hog_distances():
     for path1 in aligned_imgs_paths:
         tmp_p1 = Path(path1)
         name_1 = tmp_p1.stem
-
-        ####################################################################
-        # tmp_start_time = time()
-        ####################################################################
 
         # Calculate/recover HOG data for img1
         img1_features = hog_data.get(name_1, None)
@@ -258,6 +263,16 @@ def gen_hog_distances():
             lower_lip_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_LOWER_LIP)
             upper_lip_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_UPPER_LIP)
             mouth_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_MOUTH)
+            mouth_and_nose_features = calc_hog(
+                face_parts=face_parts, opt=HOG_OPT_MOUTH_AND_NOSE
+            )
+            eyes_and_eyebrows_features = calc_hog(
+                face_parts=face_parts, opt=HOG_OPT_EYES_AND_EYEBROWS
+            )
+            eyes_and_nose_features = calc_hog(
+                face_parts=face_parts, opt=HOG_OPT_EYES_AND_NOSE
+            )
+            full_face_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_FULL_FACE)
 
             # Save HOG features
             hog_data[name_1] = {
@@ -302,16 +317,24 @@ def gen_hog_distances():
                 __HOG_MOUTH_KEY: mouth_features.tolist()
                 if mouth_features is not None
                 else False,
+                __HOG_MOUTH_AND_NOSE_KEY: mouth_and_nose_features.tolist()
+                if mouth_and_nose_features is not None
+                else False,
+                __HOG_EYES_AND_EYEBROWS_KEY: eyes_and_eyebrows_features.tolist()
+                if eyes_and_eyebrows_features is not None
+                else False,
+                __HOG_EYES_AND_NOSE_KEY: eyes_and_nose_features.tolist()
+                if eyes_and_nose_features is not None
+                else False,
+                __HOG_FULL_FACE_KEY: full_face_features.tolist()
+                if full_face_features is not None
+                else False,
             }
 
             img1_features = hog_data[name_1]
 
             hog_data_changed = True
             logging.info(f"HOG data calculated for {name_1}")
-
-        ####################################################################
-        # eff_exp_data["calc_img1"].append(time() - tmp_start_time)
-        ####################################################################
 
         for path2 in aligned_imgs_paths:
             start_loop_time = time()
@@ -329,10 +352,6 @@ def gen_hog_distances():
             # Try recover already calculated distance
             hog_distance = tmp_distances.get(__HOG_KEY, None)
             if hog_distance is None:
-
-                ####################################################################
-                # tmp_start_time = time()
-                ####################################################################
 
                 # Calculate/recover HOG data for img2
                 img2_features = hog_data.get(name_2, None)
@@ -372,6 +391,18 @@ def gen_hog_distances():
                         face_parts=face_parts, opt=HOG_OPT_UPPER_LIP
                     )
                     mouth_features = calc_hog(face_parts=face_parts, opt=HOG_OPT_MOUTH)
+                    mouth_and_nose_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_MOUTH_AND_NOSE
+                    )
+                    eyes_and_eyebrows_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_EYES_AND_EYEBROWS
+                    )
+                    eyes_and_nose_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_EYES_AND_NOSE
+                    )
+                    full_face_features = calc_hog(
+                        face_parts=face_parts, opt=HOG_OPT_FULL_FACE
+                    )
 
                     # Save HOG features
                     hog_data[name_2] = {
@@ -420,17 +451,24 @@ def gen_hog_distances():
                         __HOG_MOUTH_KEY: mouth_features.tolist()
                         if mouth_features is not None
                         else False,
+                        __HOG_MOUTH_AND_NOSE_KEY: mouth_and_nose_features.tolist()
+                        if mouth_and_nose_features is not None
+                        else False,
+                        __HOG_EYES_AND_EYEBROWS_KEY: eyes_and_eyebrows_features.tolist()
+                        if eyes_and_eyebrows_features is not None
+                        else False,
+                        __HOG_EYES_AND_NOSE_KEY: eyes_and_nose_features.tolist()
+                        if eyes_and_nose_features is not None
+                        else False,
+                        __HOG_FULL_FACE_KEY: full_face_features.tolist()
+                        if full_face_features is not None
+                        else False,
                     }
 
                     img2_features = hog_data[name_2]
 
                     hog_data_changed = True
                     logging.info(f"HOG data calculated for {name_2}")
-
-                ####################################################################
-                # eff_exp_data["calc_img2"].append(time() - tmp_start_time)
-                # tmp_start_time = time()
-                ####################################################################
 
                 # Calculate distance
                 for key, tmp_features_1 in img1_features.items():
@@ -469,11 +507,6 @@ def gen_hog_distances():
         logging.info(
             f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {int(end_loop_time - start_loop_time)} s"
         )
-
-        ####################################################################
-        # with open("eff_exp_data.json", "w") as fp:
-        #     json.dump(eff_exp_data, fp)
-        ####################################################################
 
     # Final messages
     logging.info(
