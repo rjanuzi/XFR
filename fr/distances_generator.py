@@ -195,7 +195,7 @@ def gen_dlib_distances():
 
             calculated_distances += 1
             end_loop_time = time()
-            if calculated_distances % 1e5 == 0:
+            if calculated_distances % 3e5 == 0:
                 send_simple_message(
                     f"DLIB Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
                 )
@@ -489,7 +489,7 @@ def gen_hog_distances():
 
             calculated_distances += 1
             end_loop_time = time()
-            if calculated_distances % 1e5 == 0:
+            if calculated_distances % 3e5 == 0:
                 send_simple_message(
                     f"HOG Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
                 )
