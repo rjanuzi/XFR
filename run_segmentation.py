@@ -11,7 +11,7 @@ from dataset import (
 )
 from util._telegram import send_simple_message
 
-# Get the list of images to align, ignoring the already aligned ones
+# Get the list of imgs to segment, except the already segmented ones
 dataset_idx = gen_dataset_index()
 aligned_dataset = dataset_idx.loc[
     dataset_idx["kind"] == DATASET_KIND_STR[DATASET_KIND_ALIGNED]
@@ -20,13 +20,13 @@ seg_map_dataset = dataset_idx.loc[
     dataset_idx["kind"] == DATASET_KIND_STR[DATASET_KIND_SEG_MAP]
 ]
 
-# Select only rows that are not in the aligned dataset
+# Select only rows that haven't been segmented yet
 aligned_dataset = aligned_dataset.merge(
     seg_map_dataset, on="name", how="left", indicator=True
 )
 aligned_dataset = aligned_dataset.loc[aligned_dataset["_merge"] == "left_only"]
 
-# Based on the name of the persons, generate the expected folders structure to place the aligned images
+# Based on the name of the persons, generate the expected folders structure to place the segmentation data
 output_maps_path_lst = (
     aligned_dataset["name"]
     .apply(
