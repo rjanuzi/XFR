@@ -36,7 +36,7 @@ def __get_names_to_calculate(how_many_imgs_by_person=5):
         # Calculate the number of face elements visible in each image
         dataset_idx["face_parts_count"] = 0
         count = 0
-        for idx, row in dataset_idx.iloc.iterrows():
+        for idx, row in dataset_idx.iterrows():
             tmp_img_name = row["name"]
             try:
                 tmp_face_parts = decompose_face(tmp_img_name)
