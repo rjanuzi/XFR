@@ -81,13 +81,13 @@ def __get_names_to_calculate(how_many_imgs_by_person=5):
 
 if __name__ == "__main__":
     try:
-        img_names = __get_names_to_calculate()
-        # logging.info("Starting DLIB distances calculation")
-        # gen_dlib_distances()
-        # logging.info("Starting HOG distances calculation")
-        # gen_hog_distances()
-        # send_simple_message("Gen distances matrix done!")
-        # logging.info("All distances calculation done!")
+        imgs_names = __get_names_to_calculate()
+        logging.info("Starting DLIB distances calculation")
+        gen_dlib_distances(imgs_names=imgs_names)
+        logging.info("Starting HOG distances calculation")
+        gen_hog_distances(imgs_names=imgs_names)
+        send_simple_message("Gen distances matrix done!")
+        logging.info("All distances calculation done!")
     except:
         send_simple_message("Error generating distances matrix.")
         logging.error(traceback.format_exc())
