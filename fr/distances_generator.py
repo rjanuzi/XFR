@@ -5,7 +5,8 @@ from pathlib import Path
 from time import time
 
 import numpy as np
-from dataset import DATASET_KIND_ALIGNED, ls_imgs_paths
+from dataset import DATASET_KIND_ALIGNED, ls_imgs_paths, get_file_path
+import dataset
 from util._telegram import send_simple_message
 
 from fr.dlib import DlibFr
@@ -128,10 +129,13 @@ def update_hog_data(new_hog_data):
     #     pickle.dump(new_hog_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def gen_dlib_distances():
+def gen_dlib_distances(imgs_names: list):
     distances = get_distances()
     dlib_data = get_dlib_data()
-    aligned_imgs_paths = ls_imgs_paths(kind=DATASET_KIND_ALIGNED)
+    aligned_imgs_paths = [
+        get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
+        for img_name in imgs_names
+    ]
     dlib_fr = DlibFr()
 
     calculated_distances = 0
@@ -140,6 +144,7 @@ def gen_dlib_distances():
     start_time = time()
     start_loop_time = time()
     for path1 in aligned_imgs_paths:
+
         tmp_p1 = Path(path1)
         name_1 = tmp_p1.stem
 
@@ -228,10 +233,13 @@ def gen_dlib_distances():
     )
 
 
-def gen_hog_distances():
+def gen_hog_distances(imgs_names:list):
     distances = get_distances()
     hog_data = get_hog_data()
-    aligned_imgs_paths = ls_imgs_paths(kind=DATASET_KIND_ALIGNED)
+    aligned_imgs_paths = [
+        get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
+        for img_name in imgs_names
+    ]
 
     calculated_distances = 0
     hog_data_changed = False
