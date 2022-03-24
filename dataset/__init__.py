@@ -12,6 +12,7 @@ DATASET_GENERATED_FOLDER = Path(Path(__file__).parent, "generated_images")
 DATASET_MORPH_FOLDER = Path(Path(__file__).parent, "morphs")
 DATASET_SEG_IMG_FOLDER = Path(Path(__file__).parent, "seg_images")
 DATASET_SEG_MAP_FOLDER = Path(Path(__file__).parent, "seg_maps")
+DATASET_VGGFACE2_FOLDER = Path(Path(__file__).parent, "vggface2", "test")
 
 DATASET_RAW_FOLDER.mkdir(exist_ok=True, parents=True)
 DATASET_ALIGNED_FOLDER.mkdir(exist_ok=True, parents=True)
@@ -21,6 +22,7 @@ DATASET_GENERATED_FOLDER.mkdir(exist_ok=True, parents=True)
 DATASET_MORPH_FOLDER.mkdir(exist_ok=True, parents=True)
 DATASET_SEG_IMG_FOLDER.mkdir(exist_ok=True, parents=True)
 DATASET_SEG_MAP_FOLDER.mkdir(exist_ok=True, parents=True)
+DATASET_VGGFACE2_FOLDER.mkdir(exist_ok=True, parents=True)
 
 DATASET_KIND_RAW = 1
 DATASET_KIND_ALIGNED = 2
@@ -30,6 +32,7 @@ DATASET_KIND_GENERATED = 5
 DATASET_KIND_MORPH = 6
 DATASET_KIND_SEG_IMG = 7
 DATASET_KIND_SEG_MAP = 8
+DATASET_KIND_VGGFACE2 = 9
 
 DATASET_KIND_MAP = {
     DATASET_KIND_RAW: DATASET_RAW_FOLDER,
@@ -40,6 +43,7 @@ DATASET_KIND_MAP = {
     DATASET_KIND_MORPH: DATASET_MORPH_FOLDER,
     DATASET_KIND_SEG_IMG: DATASET_SEG_IMG_FOLDER,
     DATASET_KIND_SEG_MAP: DATASET_SEG_MAP_FOLDER,
+    DATASET_KIND_VGGFACE2: DATASET_VGGFACE2_FOLDER,
 }
 
 DATASET_KIND_STR = {
@@ -51,6 +55,7 @@ DATASET_KIND_STR = {
     DATASET_KIND_MORPH: "morph",
     DATASET_KIND_SEG_IMG: "seg_img",
     DATASET_KIND_SEG_MAP: "seg_map",
+    DATASET_KIND_VGGFACE2: "vggface2",
 }
 
 
@@ -90,7 +95,7 @@ def read_aligned(name: str) -> Image:
     ).convert("RGB")
 
 
-def gen_dataset_index() -> DataFrame:
+def gen_dataset_index(kind: str = None) -> DataFrame:
     """
     Generate the dataset entries.
     Out:
@@ -118,7 +123,10 @@ def gen_dataset_index() -> DataFrame:
 
     entries = DataFrame(entries)
 
-    return entries
+    if kind is not None:
+        return entries[entries["kind"] == kind]
+    else:
+        return entries
 
 
 def ls_imgs_paths(kind: int = DATASET_KIND_RAW) -> list:
