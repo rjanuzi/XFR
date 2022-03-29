@@ -84,10 +84,7 @@ if __name__ == "__main__":
         imgs_names = __get_names_to_calculate()
         logging.info("Starting DLIB distances calculation")
         gen_dlib_distances(imgs_names=imgs_names)
-        logging.info("Starting HOG distances calculation")
-        gen_hog_distances(imgs_names=imgs_names)
-        send_simple_message("Gen distances matrix done!")
-        logging.info("All distances calculation done!")
+        send_simple_message("Gen DLIB distances matrix done!")
     except:
         send_simple_message("Error generating distances matrix.")
         logging.error(traceback.format_exc())
