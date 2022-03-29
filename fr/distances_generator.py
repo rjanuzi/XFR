@@ -35,7 +35,8 @@ from fr.hog_descriptor import (
     compare_hogs,
 )
 
-__DISTANCES_PATH = Path("fr", "distances.json")
+__DISTANCES_DLIB_PATH = Path("fr", "distances_dlib.json")
+__DISTANCES_HOG_PATH = Path("fr", "distances_hog.json")
 __DLIB_DATA_PATH = Path("fr", "dlib_data.json")
 __HOG_DATA_PATH = Path("fr", "hog_data.json")
 # __HOG_DATA_PATH = Path("fr", "hog_data.pkl")
@@ -84,17 +85,17 @@ __HOG_KEY_TO_OPT = {
 }
 
 
-def get_distances():
+def get_distances(file_path):
     try:
-        return json.load(open(__DISTANCES_PATH, "r"))
+        return json.load(open(file_path, "r"))
     except FileNotFoundError:
         distancies = {}
-        json.dump(distancies, open(__DISTANCES_PATH, "w"))
+        json.dump(distancies, open(file_path, "w"))
         return distancies
 
 
-def update_distances(new_distances_idx):
-    json.dump(new_distances_idx, open(__DISTANCES_PATH, "w"))
+def update_distances(new_distances_idx, file_path):
+    json.dump(new_distances_idx, open(file_path, "w"))
 
 
 def get_dlib_data():
@@ -130,7 +131,7 @@ def update_hog_data(new_hog_data):
 
 
 def gen_dlib_distances(imgs_names: list):
-    distances = get_distances()
+    distances = get_distances(file_path=__DISTANCES_DLIB_PATH)
     dlib_data = get_dlib_data()
     aligned_imgs_paths = [
         get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
@@ -206,7 +207,7 @@ def gen_dlib_distances(imgs_names: list):
                 )
 
                 # Save results
-                update_distances(distances)
+                update_distances(distances, file_path=__DISTANCES_DLIB_PATH)
                 if dlib_data_changed:
                     logging.info("Updating DLIB Data.")
                     update_dlib_data(dlib_data)
@@ -222,7 +223,7 @@ def gen_dlib_distances(imgs_names: list):
         )
 
     # Save final results
-    update_distances(distances)
+    update_distances(distances, file_path=__DISTANCES_DLIB_PATH)
 
     # Final messages
     logging.info(
@@ -233,8 +234,8 @@ def gen_dlib_distances(imgs_names: list):
     )
 
 
-def gen_hog_distances(imgs_names:list):
-    distances = get_distances()
+def gen_hog_distances(imgs_names: list):
+    distances = get_distances(file_path=__DISTANCES_HOG_PATH)
     hog_data = get_hog_data()
     aligned_imgs_paths = [
         get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
@@ -503,7 +504,7 @@ def gen_hog_distances(imgs_names:list):
                 )
 
                 # Update results
-                update_distances(distances)
+                update_distances(distances, file_path=__DISTANCES_HOG_PATH)
 
                 # Update HOG Tmp data if needed
                 if hog_data_changed:
@@ -520,7 +521,7 @@ def gen_hog_distances(imgs_names:list):
         )
 
     # Save final results
-    update_distances(distances)
+    update_distances(distances, file_path=__DISTANCES_HOG_PATH)
 
     # Final messages
     logging.info(
