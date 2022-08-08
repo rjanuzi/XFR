@@ -84,6 +84,7 @@ if __name__ == "__main__":
         imgs_names = __get_names_to_calculate()
 
         logging.info("Starting TF RESNET Faceparts distances calculation")
+        send_simple_message("Starting TF RESNET Faceparts distances calculation")
         gen_tf_resnet_faceparts_distances(imgs_names=imgs_names)
         send_simple_message("Gen TF RESNET Faceparts distances matrix done!")
     except:
