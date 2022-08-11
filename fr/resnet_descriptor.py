@@ -197,7 +197,6 @@ def gen_resnet_distances(imgs_names: list):
 
                 # Calculate distance
                 distances[tmp_key_1] = calc_resnet_distance(
-                        features_1=np.asarray(img1_features),
                     features_1=np.asarray(img1_features),
                     features_2=np.asarray(img2_features),
                 )
