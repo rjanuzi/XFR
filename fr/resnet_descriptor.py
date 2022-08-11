@@ -50,7 +50,7 @@ __resnet_model.build([None, 224, 224, 3])  # Batch input shape.
 
 
 def calc_features(img_name: str) -> list:
-    img_data = Image.open(get_file_path(img_name, DATASET_KIND_ALIGNED, ".png"))
+    img_data = np.array(Image.open(get_file_path(img_name, DATASET_KIND_ALIGNED, ".png")))
 
     img = tf.image.convert_image_dtype(img_data, tf.float32)
     img = tf.image.resize_with_crop_or_pad(img, 224, 224)
