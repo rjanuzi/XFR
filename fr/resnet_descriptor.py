@@ -50,7 +50,9 @@ __resnet_model.build([None, 224, 224, 3])  # Batch input shape.
 
 
 def calc_features(img_name: str) -> list:
-    img_data = np.array(Image.open(get_file_path(img_name, DATASET_KIND_ALIGNED, ".png")))
+    img_data = np.array(
+        Image.open(get_file_path(img_name, DATASET_KIND_ALIGNED, ".png"))
+    )
 
     img = tf.image.convert_image_dtype(img_data, tf.float32)
     img = tf.image.resize_with_crop_or_pad(img, 224, 224)
@@ -169,15 +171,14 @@ def gen_resnet_distances(imgs_names: list):
             tmp_key_2 = f"{name_2} x {name_1}"
 
             # Check for already calculated distances
-            tmp_distances = distances.get(tmp_key_1, {})
-            if not tmp_distances:
-                tmp_distances = distances.get(tmp_key_2, {})
+            resnet_distance = distances.get(tmp_key_1, None)
+            if resnet_distance is None:
+                resnet_distance = distances.get(tmp_key_2, None)
 
             # Try recover already calculated distance
-            resnet_distance = tmp_distances.get(list(img1_features.keys())[0], None)
             if resnet_distance is None:
 
-                # Calculate/recover HOG data for img2
+                # Calculate/recover Features data for img2
                 img2_features = resnet_data.get(name_2, None)
                 if img2_features is None:
                     try:
@@ -195,15 +196,11 @@ def gen_resnet_distances(imgs_names: list):
                         continue
 
                 # Calculate distance
-                for key, tmp_features_1 in img1_features.items():
-                    tmp_features_2 = img2_features.get(key)
-                    tmp_distances[key] = calc_resnet_distance(
-                        features_1=np.asarray(tmp_features_1),
-                        features_2=np.asarray(tmp_features_2),
-                    )
-
-                distances[tmp_key_1] = tmp_distances
-
+                distances[tmp_key_1] = calc_resnet_distance(
+                        features_1=np.asarray(img1_features),
+                    features_1=np.asarray(img1_features),
+                    features_2=np.asarray(img2_features),
+                )
             calculated_distances += 1
             end_loop_time = time()
             if calculated_distances % 3e5 == 0:
