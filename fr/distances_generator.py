@@ -5,9 +5,11 @@ from pathlib import Path
 from time import time
 
 import numpy as np
-from dataset import DATASET_KIND_ALIGNED, ls_imgs_paths, get_file_path
+from dataset import DATASET_KIND_ALIGNED, get_file_path
 import dataset
 from util._telegram import send_simple_message
+
+from fr.resnet_descriptor import calc_facepart_features, calc_tf_resnet_distance
 
 from fr.dlib import DlibFr
 from fr.face_decomposition import decompose_face
@@ -35,9 +37,35 @@ from fr.hog_descriptor import (
     compare_hogs,
 )
 
+from fr.dlib import (
+    DLIB_OPT_ALL,
+    DLIB_OPT_EARS,
+    DLIB_OPT_EYEBROWS,
+    DLIB_OPT_EYES,
+    DLIB_OPT_EYES_AND_EYEBROWS,
+    DLIB_OPT_EYES_AND_NOSE,
+    DLIB_OPT_FACE,
+    DLIB_OPT_FULL_FACE,
+    DLIB_OPT_LEFT_EAR,
+    DLIB_OPT_LEFT_EYE,
+    DLIB_OPT_LEFT_EYEBROW,
+    DLIB_OPT_LOWER_LIP,
+    DLIB_OPT_MOUTH,
+    DLIB_OPT_MOUTH_AND_NOSE,
+    DLIB_OPT_NOSE,
+    DLIB_OPT_RIGHT_EAR,
+    DLIB_OPT_RIGHT_EYE,
+    DLIB_OPT_RIGHT_EYEBROW,
+    DLIB_OPT_UPPER_LIP,
+)
+
 __DISTANCES_DLIB_PATH = Path("fr", "distances_dlib.json")
+__DISTANCES_DLIB_FACEPARTS_PATH = Path("fr", "distances_dlib_faceparts.json")
+__DISTANCES_TF_RESNET_FACEPARTS_PATH = Path("fr", "distances_tf_resenet_faceparts.json")
 __DISTANCES_HOG_PATH = Path("fr", "distances_hog.json")
 __DLIB_DATA_PATH = Path("fr", "dlib_data.json")
+__DLIB_FACEPARTS_DATA_PATH = Path("fr", "dlib_faceparts_data.json")
+__TF_RESNET_FACEPARTS_DATA_PATH = Path("fr", "tf_resnet_faceparts_data.json")
 __HOG_DATA_PATH = Path("fr", "hog_data.json")
 # __HOG_DATA_PATH = Path("fr", "hog_data.pkl")
 
@@ -82,6 +110,48 @@ __HOG_KEY_TO_OPT = {
     __HOG_EYES_AND_EYEBROWS_KEY: HOG_OPT_EYES_AND_EYEBROWS,
     __HOG_EYES_AND_NOSE_KEY: HOG_OPT_EYES_AND_NOSE,
     __HOG_FULL_FACE_KEY: HOG_OPT_FULL_FACE,
+}
+
+__DLIB_FACEPARTS_KEY = "dlib_all"
+__DLIB_FACEPARTS_FACE_KEY = "dlib_face"
+__DLIB_FACEPARTS_LEFT_EYE_KEY = "dlib_left_eye"
+__DLIB_FACEPARTS_RIGHT_EYE_KEY = "dlib_right_eye"
+__DLIB_FACEPARTS_EYES_KEY = "dlib_eyes"
+__DLIB_FACEPARTS_EYEBROWS_KEY = "dlib_eyebrows"
+__DLIB_FACEPARTS_LEFT_EYEBROW_KEY = "dlib_left_eyebrow"
+__DLIB_FACEPARTS_RIGHT_EYEBROW_KEY = "dlib_right_eyebrow"
+__DLIB_FACEPARTS_EARS_KEY = "dlib_ears"
+__DLIB_FACEPARTS_LEFT_EAR_KEY = "dlib_left_ear"
+__DLIB_FACEPARTS_RIGHT_EAR_KEY = "dlib_right_ear"
+__DLIB_FACEPARTS_NOSE_KEY = "dlib_nose"
+__DLIB_FACEPARTS_LOWER_LIP_KEY = "dlib_lower_lip"
+__DLIB_FACEPARTS_UPPER_LIP_KEY = "dlib_upper_lip"
+__DLIB_FACEPARTS_MOUTH_KEY = "dlib_mouth"
+__DLIB_FACEPARTS_MOUTH_AND_NOSE_KEY = "dlib_mouth_and_nose"
+__DLIB_FACEPARTS_EYES_AND_EYEBROWS_KEY = "dlib_eyes_and_eyebrows"
+__DLIB_FACEPARTS_EYES_AND_NOSE_KEY = "dlib_eyes_and_nose"
+__DLIB_FACEPARTS_FULL_FACE_KEY = "dlib_full_face"
+
+__DLIB_FACEPARTS_KEY_TO_OPT = {
+    __DLIB_FACEPARTS_KEY: DLIB_OPT_ALL,
+    __DLIB_FACEPARTS_FACE_KEY: DLIB_OPT_FACE,
+    __DLIB_FACEPARTS_LEFT_EYE_KEY: DLIB_OPT_LEFT_EYE,
+    __DLIB_FACEPARTS_RIGHT_EYE_KEY: DLIB_OPT_RIGHT_EYE,
+    __DLIB_FACEPARTS_EYES_KEY: DLIB_OPT_EYES,
+    __DLIB_FACEPARTS_EYEBROWS_KEY: DLIB_OPT_EYEBROWS,
+    __DLIB_FACEPARTS_LEFT_EYEBROW_KEY: DLIB_OPT_LEFT_EYEBROW,
+    __DLIB_FACEPARTS_RIGHT_EYEBROW_KEY: DLIB_OPT_RIGHT_EYEBROW,
+    __DLIB_FACEPARTS_EARS_KEY: DLIB_OPT_EARS,
+    __DLIB_FACEPARTS_LEFT_EAR_KEY: DLIB_OPT_LEFT_EAR,
+    __DLIB_FACEPARTS_RIGHT_EAR_KEY: DLIB_OPT_RIGHT_EAR,
+    __DLIB_FACEPARTS_NOSE_KEY: DLIB_OPT_NOSE,
+    __DLIB_FACEPARTS_LOWER_LIP_KEY: DLIB_OPT_LOWER_LIP,
+    __DLIB_FACEPARTS_UPPER_LIP_KEY: DLIB_OPT_UPPER_LIP,
+    __DLIB_FACEPARTS_MOUTH_KEY: DLIB_OPT_MOUTH,
+    __DLIB_FACEPARTS_MOUTH_AND_NOSE_KEY: DLIB_OPT_MOUTH_AND_NOSE,
+    __DLIB_FACEPARTS_EYES_AND_EYEBROWS_KEY: DLIB_OPT_EYES_AND_EYEBROWS,
+    __DLIB_FACEPARTS_EYES_AND_NOSE_KEY: DLIB_OPT_EYES_AND_NOSE,
+    __DLIB_FACEPARTS_FULL_FACE_KEY: DLIB_OPT_FULL_FACE,
 }
 
 
@@ -529,4 +599,345 @@ def gen_hog_distances(imgs_names: list):
     )
     send_simple_message(
         f"HOG Distances calculation done. Total time: {int(time() - start_time)} s"
+    )
+
+
+def gen_dlib_faceparts_distances(imgs_names: list):
+    distances = get_distances(file_path=__DISTANCES_DLIB_FACEPARTS_PATH)
+    dlib_data = get_faceparts_dlib_data()
+    aligned_imgs_paths = [
+        get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
+        for img_name in imgs_names
+    ]
+    dlib_fr = DlibFr()
+
+    calculated_distances = 0
+    dlib_data_changed = False
+    total_distances = len(aligned_imgs_paths) ** 2
+    start_time = time()
+    start_loop_time = time()
+    for path1 in aligned_imgs_paths:
+        tmp_p1 = Path(path1)
+        name_1 = tmp_p1.stem
+
+        # Calculate/recover DLIB data for img1
+        img1_features = dlib_data.get(name_1, None)
+        if img1_features is None:
+            # Calculate hog features
+            face_parts = decompose_face(name_1)
+            all_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_ALL
+            )
+            face_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_FACE
+            )
+            left_eye_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_LEFT_EYE
+            )
+            right_eye_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_RIGHT_EYE
+            )
+            eyes_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_EYES
+            )
+            left_eyebrow_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_LEFT_EYEBROW
+            )
+            right_eyebrow_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_RIGHT_EYEBROW
+            )
+            eyebrows_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_EYEBROWS
+            )
+            left_ear_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_LEFT_EAR
+            )
+            right_ear_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_RIGHT_EAR
+            )
+            ears_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_EARS
+            )
+            nose_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_NOSE
+            )
+            lower_lip_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_LOWER_LIP
+            )
+            upper_lip_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_UPPER_LIP
+            )
+            mouth_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_MOUTH
+            )
+            mouth_and_nose_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_MOUTH_AND_NOSE
+            )
+            eyes_and_eyebrows_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_EYES_AND_EYEBROWS
+            )
+            eyes_and_nose_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_EYES_AND_NOSE
+            )
+            full_face_features = dlib_fr.gen_facepart_features(
+                face_parts=face_parts, opt=DLIB_OPT_FULL_FACE
+            )
+
+            # Save DLIB features
+            dlib_data[name_1] = {
+                __DLIB_FACEPARTS_KEY: all_features.tolist()
+                if all_features is not None
+                else False,
+                __DLIB_FACEPARTS_FACE_KEY: face_features.tolist()
+                if face_features is not None
+                else False,
+                __DLIB_FACEPARTS_LEFT_EYE_KEY: left_eye_features.tolist()
+                if left_eye_features is not None
+                else False,
+                __DLIB_FACEPARTS_RIGHT_EYE_KEY: right_eye_features.tolist()
+                if right_eye_features is not None
+                else False,
+                __DLIB_FACEPARTS_EYES_KEY: eyes_features.tolist(),
+                __DLIB_FACEPARTS_LEFT_EYEBROW_KEY: left_eyebrow_features.tolist()
+                if left_eyebrow_features is not None
+                else False,
+                __DLIB_FACEPARTS_RIGHT_EYEBROW_KEY: right_eyebrow_features.tolist()
+                if right_eyebrow_features is not None
+                else False,
+                __DLIB_FACEPARTS_EYEBROWS_KEY: eyebrows_features.tolist()
+                if eyebrows_features is not None
+                else False,
+                __DLIB_FACEPARTS_LEFT_EAR_KEY: left_ear_features.tolist()
+                if left_ear_features is not None
+                else False,
+                __DLIB_FACEPARTS_RIGHT_EAR_KEY: right_ear_features.tolist()
+                if right_ear_features is not None
+                else False,
+                __DLIB_FACEPARTS_EARS_KEY: ears_features.tolist()
+                if ears_features is not None
+                else False,
+                __DLIB_FACEPARTS_NOSE_KEY: nose_features.tolist()
+                if nose_features is not None
+                else False,
+                __DLIB_FACEPARTS_LOWER_LIP_KEY: lower_lip_features.tolist()
+                if lower_lip_features is not None
+                else False,
+                __DLIB_FACEPARTS_UPPER_LIP_KEY: upper_lip_features.tolist()
+                if upper_lip_features is not None
+                else False,
+                __DLIB_FACEPARTS_MOUTH_KEY: mouth_features.tolist()
+                if mouth_features is not None
+                else False,
+                __DLIB_FACEPARTS_MOUTH_AND_NOSE_KEY: mouth_and_nose_features.tolist()
+                if mouth_and_nose_features is not None
+                else False,
+                __DLIB_FACEPARTS_EYES_AND_EYEBROWS_KEY: eyes_and_eyebrows_features.tolist()
+                if eyes_and_eyebrows_features is not None
+                else False,
+                __DLIB_FACEPARTS_EYES_AND_NOSE_KEY: eyes_and_nose_features.tolist()
+                if eyes_and_nose_features is not None
+                else False,
+                __DLIB_FACEPARTS_FULL_FACE_KEY: full_face_features.tolist()
+                if full_face_features is not None
+                else False,
+            }
+
+            img1_features = dlib_data[name_1]
+
+            dlib_data_changed = True
+            logging.info(f"HOG data calculated for {name_1}")
+
+        for path2 in aligned_imgs_paths:
+            start_loop_time = time()
+
+            tmp_p2 = Path(path2)
+            name_2 = tmp_p2.stem
+            tmp_key_1 = f"{name_1} x {name_2}"
+            tmp_key_2 = f"{name_2} x {name_1}"
+
+            # Check for already calculated distances
+            tmp_distances = distances.get(tmp_key_1, {})
+            if not tmp_distances:
+                tmp_distances = distances.get(tmp_key_2, {})
+
+            # Try recover already calculated distance
+            hog_distance = tmp_distances.get(__DLIB_FACEPARTS_KEY, None)
+            if hog_distance is None:
+
+                # Calculate/recover HOG data for img2
+                img2_features = dlib_data.get(name_2, None)
+                if img2_features is None:
+                    # Calculate hog features
+                    face_parts = decompose_face(name_2)
+                    all_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_ALL
+                    )
+                    face_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_FACE
+                    )
+                    left_eye_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_LEFT_EYE
+                    )
+                    right_eye_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_RIGHT_EYE
+                    )
+                    eyes_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_EYES
+                    )
+                    left_eyebrow_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_LEFT_EYEBROW
+                    )
+                    right_eyebrow_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_RIGHT_EYEBROW
+                    )
+                    eyebrows_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_EYEBROWS
+                    )
+                    left_ear_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_LEFT_EAR
+                    )
+                    right_ear_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_RIGHT_EAR
+                    )
+                    ears_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_EARS
+                    )
+                    nose_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_NOSE
+                    )
+                    lower_lip_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_LOWER_LIP
+                    )
+                    upper_lip_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_UPPER_LIP
+                    )
+                    mouth_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_MOUTH
+                    )
+                    mouth_and_nose_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_MOUTH_AND_NOSE
+                    )
+                    eyes_and_eyebrows_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_EYES_AND_EYEBROWS
+                    )
+                    eyes_and_nose_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_EYES_AND_NOSE
+                    )
+                    full_face_features = dlib_fr.gen_facepart_features(
+                        face_parts=face_parts, opt=DLIB_OPT_FULL_FACE
+                    )
+
+                    # Save HOG features
+                    dlib_data[name_2] = {
+                        __DLIB_FACEPARTS_KEY: all_features.tolist()
+                        if all_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_FACE_KEY: face_features.tolist()
+                        if face_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_LEFT_EYE_KEY: left_eye_features.tolist()
+                        if left_eye_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_RIGHT_EYE_KEY: right_eye_features.tolist()
+                        if right_eye_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_EYES_KEY: eyes_features.tolist()
+                        if eyes_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_LEFT_EYEBROW_KEY: left_eyebrow_features.tolist()
+                        if left_eyebrow_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_RIGHT_EYEBROW_KEY: right_eyebrow_features.tolist()
+                        if right_eyebrow_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_EYEBROWS_KEY: eyebrows_features.tolist()
+                        if eyebrows_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_LEFT_EAR_KEY: left_ear_features.tolist()
+                        if left_ear_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_RIGHT_EAR_KEY: right_ear_features.tolist()
+                        if right_ear_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_EARS_KEY: ears_features.tolist()
+                        if ears_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_NOSE_KEY: nose_features.tolist()
+                        if nose_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_LOWER_LIP_KEY: lower_lip_features.tolist()
+                        if lower_lip_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_UPPER_LIP_KEY: upper_lip_features.tolist()
+                        if upper_lip_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_MOUTH_KEY: mouth_features.tolist()
+                        if mouth_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_MOUTH_AND_NOSE_KEY: mouth_and_nose_features.tolist()
+                        if mouth_and_nose_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_EYES_AND_EYEBROWS_KEY: eyes_and_eyebrows_features.tolist()
+                        if eyes_and_eyebrows_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_EYES_AND_NOSE_KEY: eyes_and_nose_features.tolist()
+                        if eyes_and_nose_features is not None
+                        else False,
+                        __DLIB_FACEPARTS_FULL_FACE_KEY: full_face_features.tolist()
+                        if full_face_features is not None
+                        else False,
+                    }
+
+                    img2_features = dlib_data[name_2]
+
+                    dlib_data_changed = True
+                    logging.info(f"HOG data calculated for {name_2}")
+
+                # Calculate distance
+                for key, tmp_features_1 in img1_features.items():
+                    tmp_features_2 = img2_features.get(key)
+                    if tmp_features_1 == False or tmp_features_2 == False:
+                        tmp_distances[key] = inf
+                    else:
+                        tmp_distances[key] = dlib_fr.gen_faceparts_distance(
+                            hog_1=np.asarray(tmp_features_1),
+                            hog_2=np.asarray(tmp_features_2),
+                            opt=__DLIB_FACEPARTS_KEY_TO_OPT[key],
+                        )
+
+                distances[tmp_key_1] = tmp_distances
+
+            calculated_distances += 1
+            end_loop_time = time()
+            if calculated_distances % 3e5 == 0:
+                send_simple_message(
+                    f"DLIB Faceparts Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
+                )
+
+                # Update results
+                update_distances(distances, file_path=__DISTANCES_DLIB_FACEPARTS_PATH)
+
+                # Update DLIB Faceparts Tmp data if needed
+                if dlib_data_changed:
+                    logging.info("Updating DLIB Faceparts Data.")
+                    update_hog_data(dlib_data)
+                    dlib_data_changed = False
+
+        # Inform state
+        logging.info(
+            f"DLIB Faceparts Distances calculation done for {name_1}. Total time: {int(time() - start_time)} s"
+        )
+        logging.info(
+            f"DLIB Faceparts Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
+        )
+
+    # Save final results
+    update_distances(distances, file_path=__DISTANCES_DLIB_FACEPARTS_PATH)
+
+    # Final messages
+    logging.info(
+        f"DLIB Faceparts Distances calculation done. Total time: {int(time() - start_time)} s"
+    )
+    send_simple_message(
+        f"DLIB Faceparts Distances calculation done. Total time: {int(time() - start_time)} s"
     )

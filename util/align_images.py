@@ -44,7 +44,7 @@ def get_landmark_model(fname=LANDMARKS_MODEL_FNAME, url=LANDMARKS_MODEL_URL):
     return unpack_bz2(file)
 
 
-def align_images(imgs_path_lst, output_path_lst):
+def align_images(imgs_path_lst, output_path_lst, output_size=1024, transform_size=4096):
     """
     Extracts and aligns all faces listed in params using the function from original FFHQ dataset preparation step
     :param imgs_path_lst: list of paths to images
@@ -57,7 +57,7 @@ def align_images(imgs_path_lst, output_path_lst):
         for _, face_landmarks in enumerate(
             landmarks_detector.get_landmarks(img_path), start=1
         ):
-            image_align(img_path, output_img_path, face_landmarks)
+            image_align(img_path, output_img_path, face_landmarks, output_size=output_size, transform_size=transform_size)
 
         aligned_count += 1
         if aligned_count % 5 == 0:

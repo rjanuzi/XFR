@@ -1,3 +1,1 @@
-distances.json
-dlib_data.json
-hog_data.json
+*.json
