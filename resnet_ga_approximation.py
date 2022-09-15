@@ -190,6 +190,8 @@ def eval_individual_error(individual):
     """
 
     individual_sum = sum(individual)
+    if individual_sum == 0:
+        return (inf,)
     individual = [i / individual_sum for i in individual]
 
     sub_df.loc[:, "combination"] = resnet_distances_norm.dot(individual)
@@ -203,22 +205,22 @@ def eval_individual_error(individual):
     # return (acc_abs_error,) # Shall return a tuple for compatibility with DEAP
 
     # # Other option
-    def row_abs_distance(row):
-        dlib_same_person = 1 if row.dlib_distance < 0.5 else 0
-        combination_same_person = 1 if row.combination < 0.5 else 0
-        return abs(dlib_same_person - combination_same_person)
+    # def row_abs_distance(row):
+    #     dlib_same_person = 1 if row.dlib_distance < 0.5 else 0
+    #     combination_same_person = 1 if row.combination < 0.5 else 0
+    #     return abs(dlib_same_person - combination_same_person)
 
-    sub_df.loc[:, "abs_error"] = sub_df.loc[:, ("dlib_distance", "combination")].apply(
-        lambda row: row_abs_distance(row), axis=1
-    )
-    return (sub_df.abs_error.sum(),)
+    # sub_df.loc[:, "abs_error"] = sub_df.loc[:, ("dlib_distance", "combination")].apply(
+    #     lambda row: row_abs_distance(row), axis=1
+    # )
+    # return (sub_df.abs_error.sum(),)
 
     # Pandas Like Error
-    # sub_df.loc[:, 'dlib_same_person'] = sub_df.dlib_distance.apply(lambda c: 1 if c < 0.5 else 0)
-    # sub_df.loc[:, 'comb_same_person'] = sub_df.combination.apply(lambda c: 1 if c < 0.5 else 0)
-    # sub_df.loc[:, 'error'] = sub_df.comb_same_person - sub_df.dlib_same_person
+    sub_df.loc[:, 'dlib_same_person'] = sub_df.dlib_distance.apply(lambda c: 1 if c < 0.5 else 0)
+    sub_df.loc[:, 'comb_same_person'] = sub_df.combination.apply(lambda c: 1 if c < 0.5 else 0)
+    sub_df.loc[:, 'error'] = sub_df.comb_same_person - sub_df.dlib_same_person
 
-    # return (sub_df[sub_df.error != inf].error.abs().sum(),) # Shall return a tuple for compatibility with DEAP
+    return (sub_df[sub_df.error != inf].error.abs().sum(),) # Shall return a tuple for compatibility with DEAP
 
 
 # creator.create("FitnessMax", base.Fitness, weights=(1.0,)) # Corr (maximize)
