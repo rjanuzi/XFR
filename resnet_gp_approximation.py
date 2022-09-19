@@ -1,22 +1,15 @@
 # Face Recognition (FR) - DLIB ResNET Approximation with Genetic Programming
 
-import pandas as pd
 import json
-import matplotlib.pyplot as plt
-import numpy as np
 import math
-from pathlib import Path
-import seaborn as sns
-
-from random import random, seed, randint
 import operator
+from pathlib import Path
+from random import randint, seed
 from time import time
 
-from deap import algorithms
-from deap import base
-from deap import creator
-from deap import tools
-from deap import gp
+import numpy as np
+import pandas as pd
+from deap import algorithms, base, creator, gp, tools
 
 from util._telegram import send_simple_message
 
@@ -279,16 +272,14 @@ _ = send_simple_message(f"GP finished in {int((end_time - start_time)/60)} minut
 
 best = hof[0]
 best_tree = gp.PrimitiveTree(best)
-str(best_tree)
+print(str(best_tree))
 
 
 pop_fitness = pd.DataFrame(
     dict(pop_fitness=np.array([i.fitness.values[0] for i in pop]))
 )
-sns.lineplot(data=pop_fitness, x=pop_fitness.index, y="pop_fitness")
 
 
 hof_fitness = pd.DataFrame(
     dict(hof_fitness=np.array([i.fitness.values[0] for i in hof]))
 )
-sns.lineplot(data=hof_fitness, x=hof_fitness.index, y="hof_fitness")
