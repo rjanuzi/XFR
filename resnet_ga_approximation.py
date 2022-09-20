@@ -1,32 +1,24 @@
 # # Face Recognition (FR) - DLIB ResNET Approximation with Genetic Algorithm
 
-from pathlib import Path
-import pandas as pd
 import json
-import matplotlib.pyplot as plt
-import numpy as np
 from math import inf
+from pathlib import Path
+from random import random
 from time import time
 
-from random import random
-
-from deap import base
-from deap import creator
-from deap import tools
+import numpy as np
+import pandas as pd
+from deap import base, creator, tools
 
 from util._telegram import send_simple_message
-
 
 # ### Prepare data and generate extra information
 
 
 EXPERIMENT_ID = 4
-
-
 DLIB_DISTANCES_FILE = Path("fr", "distances_dlib.json")
 RESNET_DISTANCES_FILE = Path("fr", "distances_resnet.json")
 RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
-
 BEST_INDIVIDUAL_FILE = Path(
     "fr",
     "best_combination_runs",
@@ -85,9 +77,7 @@ distances["same_person"] = (distances.person1 == distances.person2).apply(
 distances.drop(columns="pair", inplace=True)
 
 
-# ### Genetic Algorithm (GA) Search
-#
-
+# Genetic Algorithm (GA) Search
 
 RESNET_COLS_TO_IGNORE = [
     "resnet_left_ear",
@@ -109,16 +99,16 @@ IND_SIZE = len(resnet_cols)
 
 # AG Search Params
 SUB_SET_SIZE = 5000000  # Number of distances to consider
-CXPB = 0.6  # Probability with which two individuals are crossed
+CXPB = 0.5  # Probability with which two individuals are crossed
 MUTPB = 0.3  # Probability for mutating an individual
 INDPB = 0.1  # Probability for flipping a bit of an individual
-POP_SIZE = 400
+POP_SIZE = 300
 MAX_GENERATIONS = 100
 NO_BEST_MAX_GENERATIONS = (
-    10  # Stop search if have a specific number of generations without improvement
+    15  # Stop search if have a specific number of generations without improvement
 )
 
-# %%
+
 cleared_distances = distances.replace(inf, np.nan)
 cleared_distances.dropna(inplace=True)
 # cleared_distances = cleared_distances[cleared_distances.dlib_distance > 0.01].reset_index(drop=True)
@@ -141,9 +131,8 @@ for col in sub_df.columns:
 resnet_distances_norm = sub_df.loc[:, resnet_cols]
 
 
-# #### Fitness Function
+# Fitness Function
 
-# %%
 # def eval_individual_error(individual):
 #     """
 #     Calculate the Mean Squeare Error (MSE) of the individual as a measure of fitness
@@ -196,31 +185,17 @@ def eval_individual_error(individual):
 
     sub_df.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
-    # One For error
-    # acc_abs_error = 0
-    # for _, row in sub_df.iterrows():
-    #     dlib_same_person = 1 if row.dlib_distance < 0.5 else 0
-    #     combination_same_person = 1 if row.combination < 0.5 else 0
-    #     acc_abs_error += abs(dlib_same_person - combination_same_person)
-    # return (acc_abs_error,) # Shall return a tuple for compatibility with DEAP
-
-    # # Other option
-    # def row_abs_distance(row):
-    #     dlib_same_person = 1 if row.dlib_distance < 0.5 else 0
-    #     combination_same_person = 1 if row.combination < 0.5 else 0
-    #     return abs(dlib_same_person - combination_same_person)
-
-    # sub_df.loc[:, "abs_error"] = sub_df.loc[:, ("dlib_distance", "combination")].apply(
-    #     lambda row: row_abs_distance(row), axis=1
-    # )
-    # return (sub_df.abs_error.sum(),)
-
     # Pandas Like Error
-    sub_df.loc[:, 'dlib_same_person'] = sub_df.dlib_distance.apply(lambda c: 1 if c < 0.5 else 0)
-    sub_df.loc[:, 'comb_same_person'] = sub_df.combination.apply(lambda c: 1 if c < 0.5 else 0)
-    sub_df.loc[:, 'error'] = sub_df.comb_same_person - sub_df.dlib_same_person
+    sub_df.loc[:, "dlib_same_person"] = sub_df.dlib_distance.apply(
+        lambda c: 1 if c < 0.37 else 0
+    )
+    sub_df.loc[:, "comb_same_person"] = sub_df.combination.apply(
+        lambda c: 1 if c < 0.37 else 0
+    )
+    sub_df.loc[:, "error"] = sub_df.comb_same_person - sub_df.dlib_same_person
 
-    return (sub_df[sub_df.error != inf].error.abs().sum(),) # Shall return a tuple for compatibility with DEAP
+    # Shall return a tuple for compatibility with DEAP
+    return (sub_df[sub_df.error != inf].error.abs().sum(),)
 
 
 # creator.create("FitnessMax", base.Fitness, weights=(1.0,)) # Corr (maximize)
@@ -244,15 +219,9 @@ start_time = time()
 pop = toolbox.population(n=POP_SIZE)
 
 fitness_time = time()
-print(f"Evaluating {POP_SIZE} individuals")
-send_simple_message(f"Evaluating {POP_SIZE} individuals")
 # Evaluate the entire population
 for ind, fit in zip(pop, map(toolbox.evaluate, pop)):
     ind.fitness.values = fit
-print(f"Time to evaluate fitness {(time() - fitness_time)//60} minutes")
-send_simple_message(
-    f"Opt2: Time to evaluate fitness {(time() - fitness_time)//60} minutes for {POP_SIZE} individuals"
-)
 
 # Extracting all the fitnesses of
 fits = [ind.fitness.values[0] for ind in pop]
@@ -266,11 +235,12 @@ last_min_fit = +1e9
 best_generation = 0
 bests = []
 
+send_simple_message("Starting GA")
+
 # Begin the evolution
 while g < MAX_GENERATIONS:
     # A new generation
     g = g + 1
-    print("-- Generation %i --" % g)
 
     # Select the next generation individuals
     offspring = toolbox.select(pop, len(pop))
@@ -309,20 +279,16 @@ while g < MAX_GENERATIONS:
     sum2 = sum(x * x for x in fits)
     std = abs(sum2 / length - mean ** 2) ** 0.5
 
-    print("  Min %s" % min(fits))
-    print("  Max %s" % max(fits))
-    print("  Avg %s" % mean)
-    print("  Std %s" % std)
-
     if std < 3e-3:
         low_std_times += 1
 
     # If we face 5 generations with low standard deviation, let's resset population
-    if low_std_times > 10:
+    if low_std_times > 5:
         low_std_times = 0
 
         # Reset Pop
         print("Resetting pop")
+        send_simple_message("Resetting pop")
         pop = toolbox.population(n=POP_SIZE)
 
         # Evaluate the entire population
@@ -356,6 +322,13 @@ while g < MAX_GENERATIONS:
         print("No best found for too long, ending search")
         send_simple_message("No best found for too long, ending search")
         break
+
+    print(
+        f"{g} Gens | Best fitness: {last_min_fit} | Std: {std} | {(time() - start_time)//60} min | {g}/{MAX_GENERATIONS} | ({round(g/MAX_GENERATIONS*100, 2)} %)"
+    )
+    _ = send_simple_message(
+        f"{g} Gens | Best fitness: {last_min_fit} | Std: {std} | {(time() - start_time)//60} min | {g}/{MAX_GENERATIONS} | ({round(g/MAX_GENERATIONS*100, 2)} %)"
+    )
 
 
 print(
