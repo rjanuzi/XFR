@@ -602,9 +602,10 @@ def run_experiment():
                 tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
                 f.write(tmp_line)
 
-        print(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
-        )
-        _ = send_simple_message(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
-        )
+        if params_experimented % 10 == 0:
+            print(
+                f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
+            )
+            _ = send_simple_message(
+                f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
+            )
