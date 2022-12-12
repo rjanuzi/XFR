@@ -363,10 +363,13 @@ def run_experiment():
                                     "error_fun": ERROR_FUNCTIONS[error_fun_name],
                                 }
 
-    params_gen = params_generator()
+    params = list(params_generator())
 
+    params_experimented = 0
     exp_id = 0
-    for params in params_gen:
+    for params in params:
+        start_time = time()
+        params_experimented += 1
         current_cxpb = params["cxpb"]
         current_mutpb = params["mutpb"]
         current_indpb = params["indpb"]
@@ -377,7 +380,6 @@ def run_experiment():
         best = None
         for cluster in clusters:
             exp_id += 1
-            start_time = time()
             cluster_distances = distances[
                 (distances.img1_cluster == cluster)
                 & (distances.img2_cluster == cluster)
@@ -558,9 +560,9 @@ def run_experiment():
                 tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
                 f.write(tmp_line)
 
-            print(
-                f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
-            )
-            # _ = send_simple_message(
-            #     f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
-            # )
+        print(
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params)} {round(100*params_experimented/len(params),2)}% | Spent {round((time()-start_time)//60,2)} min"
+        )
+        _ = send_simple_message(
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params)} {round(100*params_experimented/len(params),2)}% | Spent {round((time()-start_time)//60,2)} min"
+        )
