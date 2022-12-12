@@ -35,22 +35,20 @@ RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments.csv")
 # Experiments params
 
 # AG Search Params
-CXPB = [0.3, 0.4, 0.5, 0.6, 0.7]  # Probability with which two individuals are crossed
-MUTPB = [0.1, 0.2, 0.3, 0.4, 0.5]  # Probability for mutating an individual
+CXPB = [0.3, 0.4, 0.5]  # Probability with which two individuals are crossed
+MUTPB = [0.2, 0.3]  # Probability for mutating an individual
 INDPB = [
-    0.05,
-    0.1,
     0.15,
     0.2,
     0.25,
     0.3,
 ]  # Probability for flipping a bit of an individual
-POP_SIZE = [50, 100, 200, 400, 800, 1000]  # Population size
-MAX_GENERATIONS = [50, 100, 200, 400, 800, 1000]  # Maximum number of generations
+POP_SIZE = [50, 100, 200, 400]  # Population size
+MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
-RANK_TOP_N = 100
+RANK_TOP_N = 50
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -298,11 +296,11 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
 
 
 ERROR_FUNCTIONS = {
-    "rank_error": rank_error,
     "mse": mse,
     "mae": mae,
     "abs_error": abs_error,
     "step_error": step_error,
+    "rank_error": rank_error,
 }
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
