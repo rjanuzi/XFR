@@ -370,7 +370,7 @@ def run_experiment():
     params_experimented = 0
     exp_id = 0
     for params in params_comb:
-        start_time = time()
+        params_start_time = time()
         params_experimented += 1
         current_cxpb = params["cxpb"]
         current_mutpb = params["mutpb"]
@@ -563,8 +563,8 @@ def run_experiment():
                 f.write(tmp_line)
 
         print(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-start_time)//60,2)} min"
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
         )
         _ = send_simple_message(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-start_time)//60,2)} min"
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
         )
