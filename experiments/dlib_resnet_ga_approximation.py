@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from math import inf
 from pathlib import Path
-from random import random
+from random import random, shuffle
 from time import time
 
 import numpy as np
@@ -49,6 +49,8 @@ MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
 RANK_TOP_N = 30
+
+RANK_ERROR_IMGS_LIMIT = 100
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -175,9 +177,10 @@ def rank_error(individual, cluster_distances, resnet_distances_norm):
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = cluster_distances.img1.unique()
+    imgs = list(cluster_distances.img1.unique())
+    shuffle(imgs)
     corrs = []
-    for img in imgs:
+    for img in imgs[:RANK_ERROR_IMGS_LIMIT]:
         dlib_img_distances = cluster_distances[
             cluster_distances.img1 == img
         ].reset_index(drop=True)
