@@ -43,12 +43,12 @@ INDPB = [
     0.25,
     0.3,
 ]  # Probability for flipping a bit of an individual
-POP_SIZE = [50, 100, 200, 400]  # Population size
+POP_SIZE = [100, 200, 400]  # Population size
 MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
-RANK_TOP_N = 50
+RANK_TOP_N = 30
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -335,11 +335,43 @@ def calc_rank(individual, cluster_distances, resnet_distances_norm):
     return min(corrs), max(corrs), np.median(corrs), np.mean(corrs)
 
 
+def gen_imgs_ranks(
+    individual, cluster_distances, resnet_distances_norm
+) -> pd.DataFrame:
+    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+
+    cluster_distances.sort_values(
+        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    )
+    by_comb_distances = cluster_distances.sort_values(
+        by="combination", ascending=True, ignore_index=True
+    )
+
+    imgs = cluster_distances.img1.unique()
+    corrs = []
+    for img in imgs:
+        dlib_img_distances = cluster_distances[
+            cluster_distances.img1 == img
+        ].reset_index(drop=True)
+        comb_img_distances = by_comb_distances[
+            by_comb_distances.img1 == img
+        ].reset_index(drop=True)
+
+        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
+            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        )
+
+        if not np.isnan(tmp_corr):
+            corrs.append({"img": img, "rank": tmp_corr})
+
+    return pd.DataFrame(corrs)
+
+
 def run_experiment():
 
     with open(RESULTS_FILE, "w") as f:
         f.write(
-            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
+            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,rank_top_n,no_best_max_gens,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
         )
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
@@ -379,7 +411,7 @@ def run_experiment():
         current_max_generations = params["max_generations"]
         current_error_fun = params["error_fun"]
 
-        best = None
+        best = {}
         for cluster in clusters:
             exp_id += 1
             cluster_distances = distances[
@@ -460,9 +492,12 @@ def run_experiment():
             individuals_folder.mkdir(exist_ok=True)
             best_individual_file = individuals_folder.joinpath("best_individual.json")
             best_individuals_file = individuals_folder.joinpath("best_individuals.json")
+            best_individuals_imgs_ranks_file = individuals_folder.joinpath(
+                "imgs_ranks.csv"
+            )
 
             low_std_times = 0
-            last_max_fit = -1e9
+            # last_max_fit = -1e9
             last_min_fit = +1e9
             best_generation = 0
             last_gen_reset = 0
@@ -540,9 +575,6 @@ def run_experiment():
                     best = pop[best_idx]
 
                     print(f"New best found (Gen: {best_generation}): {last_min_fit}")
-                    json.dump(
-                        dict(zip(resnet_cols, best)), open(best_individual_file, "w")
-                    )
 
                     bests.append(
                         {
@@ -551,14 +583,22 @@ def run_experiment():
                             "best_data": dict(zip(resnet_cols, best)),
                         }
                     )
-                    json.dump(bests, open(best_individuals_file, "w"))
 
+            # Save results to files
+            json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
+            json.dump(bests, open(best_individuals_file, "w"))
             min_rank, max_rank, median_rank, mean_rank = calc_rank(
                 best, cluster_distances, resnet_distances_norm
             )
+
+            tmp_imgs_ranks = gen_imgs_ranks(
+                best, cluster_distances, resnet_distances_norm
+            )
+            tmp_imgs_ranks.to_csv(best_individuals_imgs_ranks_file, index=False)
+
             with open(RESULTS_FILE, "a") as f:
                 tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"
-                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{best_generation},{last_min_fit}"
+                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{RANK_TOP_N},{NO_BEST_MAX_GENERATIONS},{best_generation},{last_min_fit}"
                 tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
                 f.write(tmp_line)
 
