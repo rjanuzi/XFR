@@ -157,6 +157,48 @@ resnet_cols = list(
 IND_SIZE = len(resnet_cols)
 
 # Fitness Function
+def rank_error(individual, cluster_distances, resnet_distances_norm):
+    """
+    Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
+    """
+    individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
+    individual = [i / individual_sum for i in individual]
+
+    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+
+    cluster_distances.sort_values(
+        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    )
+    by_comb_distances = cluster_distances.sort_values(
+        by="combination", ascending=True, ignore_index=True
+    )
+
+    imgs = cluster_distances.img1.unique()
+    corrs = []
+    for img in imgs:
+        dlib_img_distances = cluster_distances[
+            cluster_distances.img1 == img
+        ].reset_index(drop=True)
+        comb_img_distances = by_comb_distances[
+            by_comb_distances.img1 == img
+        ].reset_index(drop=True)
+
+        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
+            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        )
+
+        if not np.isnan(tmp_corr):
+            corrs.append(tmp_corr)
+
+    return (
+        np.mean(corrs) * -1,
+    )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
+
+
 def mse(individual, cluster_distances, resnet_distances_norm):
     """
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
@@ -255,54 +297,12 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def rank_error(individual, cluster_distances, resnet_distances_norm):
-    """
-    Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
-    """
-    individual_sum = sum(individual)
-
-    if individual_sum == 0:
-        return (inf,)
-
-    individual = [i / individual_sum for i in individual]
-
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
-
-    cluster_distances.sort_values(
-        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
-    )
-    by_comb_distances = cluster_distances.sort_values(
-        by="combination", ascending=True, ignore_index=True
-    )
-
-    imgs = cluster_distances.img1.unique()
-    corrs = []
-    for img in imgs:
-        dlib_img_distances = cluster_distances[
-            cluster_distances.img1 == img
-        ].reset_index(drop=True)
-        comb_img_distances = by_comb_distances[
-            by_comb_distances.img1 == img
-        ].reset_index(drop=True)
-
-        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
-            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
-        )
-
-        if not np.isnan(tmp_corr):
-            corrs.append(tmp_corr)
-
-    return (
-        np.mean(corrs) * -1,
-    )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
-
-
 ERROR_FUNCTIONS = {
+    "rank_error": rank_error,
     "mse": mse,
     "mae": mae,
     "abs_error": abs_error,
     "step_error": step_error,
-    "rank_error": rank_error,
 }
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
@@ -363,11 +363,15 @@ def run_experiment():
                                     "error_fun": ERROR_FUNCTIONS[error_fun_name],
                                 }
 
-    params = list(params_generator())
+    params_comb = list(params_generator())
+
+    send_simple_message(
+        f"Starting DLIB ResNET GA Experiments with {len(params_comb)} combination of parameters"
+    )
 
     params_experimented = 0
     exp_id = 0
-    for params in params:
+    for params in params_comb:
         start_time = time()
         params_experimented += 1
         current_cxpb = params["cxpb"]
@@ -561,8 +565,8 @@ def run_experiment():
                 f.write(tmp_line)
 
         print(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params)} {round(100*params_experimented/len(params),2)}% | Spent {round((time()-start_time)//60,2)} min"
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-start_time)//60,2)} min"
         )
         _ = send_simple_message(
-            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params)} {round(100*params_experimented/len(params),2)}% | Spent {round((time()-start_time)//60,2)} min"
+            f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-start_time)//60,2)} min"
         )
