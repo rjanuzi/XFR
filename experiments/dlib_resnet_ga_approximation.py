@@ -1,6 +1,7 @@
 # Face Recognition (FR) - DLIB ResNET Approximation with Genetic Algorithm
 
 import json
+from datetime import datetime
 from math import inf
 from pathlib import Path
 from random import random
@@ -24,7 +25,9 @@ RESNET_DISTANCES_FILE = Path("fr", "distances_resnet.json")
 RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
 DLIB_DATASET_CLUSTERS_FILE = Path("fr", "dlib_clusters.json")
 
-RESULTS_FOLDER = Path("experiments", "results")
+RESULTS_FOLDER = Path(
+    "experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}_results"
+)
 RESULTS_FOLDER.mkdir(exist_ok=True)
 
 RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments.csv")
@@ -46,12 +49,8 @@ POP_SIZE = [50, 100, 200, 400, 800, 1000]  # Population size
 MAX_GENERATIONS = [50, 100, 200, 400, 800, 1000]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
-NO_BEST_MAX_GENERATIONS = 5  # Reset pop if no improvement in the last 10 generations
+NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
 RANK_TOP_N = 100
-
-
-def register_result(exp_id: int, error_func: str):
-    pass
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -163,6 +162,10 @@ def mse(individual, cluster_distances, resnet_distances_norm):
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
     """
     individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
     individual = [i / individual_sum for i in individual]
 
     cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
@@ -184,6 +187,10 @@ def mae(individual, cluster_distances, resnet_distances_norm):
     """
 
     individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
     individual = [i / individual_sum for i in individual]
 
     cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
@@ -202,6 +209,10 @@ def abs_error(individual, cluster_distances, resnet_distances_norm):
     """
 
     individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
     individual = [i / individual_sum for i in individual]
 
     cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
@@ -220,8 +231,10 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
     """
 
     individual_sum = sum(individual)
+
     if individual_sum == 0:
         return (inf,)
+
     individual = [(i / individual_sum) for i in individual]
 
     cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
@@ -230,9 +243,9 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
     cluster_distances.loc[
         :, "dlib_same_person"
     ] = cluster_distances.dlib_distance.apply(lambda c: 1 if c < 0.37 else 0)
-    cluster_distances.loc[
-        :, "comb_same_person"
-    ] = sub_dcluster_distancesf.combination.apply(lambda c: 1 if c < 0.37 else 0)
+    cluster_distances.loc[:, "comb_same_person"] = cluster_distances.combination.apply(
+        lambda c: 1 if c < 0.37 else 0
+    )
     cluster_distances.loc[:, "error"] = (
         cluster_distances.comb_same_person - cluster_distances.dlib_same_person
     )
@@ -242,24 +255,46 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def calc_rank(individual, cluster_distances, resnet_distances_norm):
+def rank_error(individual, cluster_distances, resnet_distances_norm):
+    """
+    Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
+    """
+    individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
+    individual = [i / individual_sum for i in individual]
+
     cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
-    cluster_distances.sort_values(by="dlib_distance", inplace=True, ascending=True)
-    by_comb_distances = cluster_distances.sort_values(by="combination", ascending=True)
+    cluster_distances.sort_values(
+        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    )
+    by_comb_distances = cluster_distances.sort_values(
+        by="combination", ascending=True, ignore_index=True
+    )
 
-    persons = cluster_distances.person1.unique()
+    imgs = cluster_distances.img1.unique()
     corrs = []
-    for person in persons:
-        dlib_person_distances = cluster_distances[cluster_distances.person1 == person]
-        comb_person_distances = by_comb_distances[by_comb_distances.person1 == person]
+    for img in imgs:
+        dlib_img_distances = cluster_distances[
+            cluster_distances.img1 == img
+        ].reset_index(drop=True)
+        comb_img_distances = by_comb_distances[
+            by_comb_distances.img1 == img
+        ].reset_index(drop=True)
 
-        tmp_corr = dlib_person_distances.iloc[:RANK_TOP_N].person2.corr(
-            comb_person_distances.iloc[:RANK_TOP_N].person2, method="kendall"
+        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
+            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
         )
-        corrs.append(tmp_corr)
 
-    return min(corrs), max(corrs), np.median(corrs), np.mean(corrs)
+        if not np.isnan(tmp_corr):
+            corrs.append(tmp_corr)
+
+    return (
+        np.mean(corrs) * -1,
+    )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
 
 
 ERROR_FUNCTIONS = {
@@ -267,236 +302,265 @@ ERROR_FUNCTIONS = {
     "mae": mae,
     "abs_error": abs_error,
     "step_error": step_error,
+    "rank_error": rank_error,
 }
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
-with open(RESULTS_FILE, "w") as f:
-    f.write(
-        "exp_id,cluster,error_function,cxpb,mtpb,indpb,pop_size,max_generations,min_rank,max_rank,median_rank,mean_rank\n"
+
+def calc_rank(individual, cluster_distances, resnet_distances_norm):
+    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+
+    cluster_distances.sort_values(
+        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    )
+    by_comb_distances = cluster_distances.sort_values(
+        by="combination", ascending=True, ignore_index=True
     )
 
-creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
-creator.create("Individual", list, fitness=creator.FitnessMin)
+    imgs = cluster_distances.img1.unique()
+    corrs = []
+    for img in imgs:
+        dlib_img_distances = cluster_distances[
+            cluster_distances.img1 == img
+        ].reset_index(drop=True)
+        comb_img_distances = by_comb_distances[
+            by_comb_distances.img1 == img
+        ].reset_index(drop=True)
+
+        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
+            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        )
+
+        if not np.isnan(tmp_corr):
+            corrs.append(tmp_corr)
+
+    return min(corrs), max(corrs), np.median(corrs), np.mean(corrs)
 
 
-def params_generator():
-    for cxpb in CXPB:
-        for mutpb in MUTPB:
-            for indpb in INDPB:
-                for pop_size in POP_SIZE:
-                    for max_generations in MAX_GENERATIONS:
-                        for error_fun_name in ERROR_FUNCTIONS_NAMES:
-                            yield {
-                                "cxpb": cxpb,
-                                "mutpb": mutpb,
-                                "indpb": indpb,
-                                "pop_size": pop_size,
-                                "max_generations": max_generations,
-                                "error_fun": ERROR_FUNCTIONS[error_fun_name],
-                            }
+def run_experiment():
 
+    with open(RESULTS_FILE, "w") as f:
+        f.write(
+            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
+        )
 
-params_gen = params_generator()
+    creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
+    creator.create("Individual", list, fitness=creator.FitnessMin)
 
-for params in params_gen:
-    current_cxpb = params["cxpb"]
-    current_mutpb = params["mutpb"]
-    current_indpb = params["indpb"]
-    current_pop_size = params["pop_size"]
-    current_max_generations = params["max_generations"]
-    current_error_fun = params["error_fun"]
+    def params_generator():
+        for cxpb in CXPB:
+            for mutpb in MUTPB:
+                for indpb in INDPB:
+                    for pop_size in POP_SIZE:
+                        for max_generations in MAX_GENERATIONS:
+                            for error_fun_name in ERROR_FUNCTIONS_NAMES:
+                                yield {
+                                    "cxpb": cxpb,
+                                    "mutpb": mutpb,
+                                    "indpb": indpb,
+                                    "pop_size": pop_size,
+                                    "max_generations": max_generations,
+                                    "error_fun": ERROR_FUNCTIONS[error_fun_name],
+                                }
+
+    params_gen = params_generator()
 
     exp_id = 0
-    best = None
-    for cluster in clusters:
-        exp_id += 1
-        cluster_distances = distances[
-            (distances.img1_cluster == cluster) & (distances.img2_cluster == cluster)
-        ]
+    for params in params_gen:
+        current_cxpb = params["cxpb"]
+        current_mutpb = params["mutpb"]
+        current_indpb = params["indpb"]
+        current_pop_size = params["pop_size"]
+        current_max_generations = params["max_generations"]
+        current_error_fun = params["error_fun"]
 
-        cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE]
+        best = None
+        for cluster in clusters:
+            exp_id += 1
+            start_time = time()
+            cluster_distances = distances[
+                (distances.img1_cluster == cluster)
+                & (distances.img2_cluster == cluster)
+            ]
 
-        total_pairs = len(cluster_distances)
-        total_persons = len(cluster_distances.person1.unique())
-        print(
-            f"""
-                Experiment {exp_id} with {total_pairs} pairs of images of {total_persons} persons
-                Cluster: {cluster}
-                Error Function: {current_error_fun.__name__}
-                CXPB: {current_cxpb}
-                MUTPB: {current_mutpb}
-                INDPB: {current_indpb}
-                POP_SIZE: {current_pop_size}
-                MAX_GENERATIONS: {current_max_generations}
-                """
-        )
+            cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE]
 
-        # Normalize distances inside cluster
-        norm_distances = cluster_distances.loc[
-            :, resnet_cols + ["dlib_distance"]
-        ]  # Get numerical columns to normalize
-        for col in norm_distances.columns:
-            norm_distances[col] = (norm_distances[col] - norm_distances[col].min()) / (
-                norm_distances[col].max() - norm_distances[col].min()
+            total_pairs = len(cluster_distances)
+            total_persons = len(cluster_distances.person1.unique())
+            print(
+                f"""
+                    Experiment {exp_id} with {total_pairs} pairs of images of {total_persons} persons
+                    Cluster: {cluster}
+                    Error Function: {current_error_fun.__name__}
+                    CXPB: {current_cxpb}
+                    MUTPB: {current_mutpb}
+                    INDPB: {current_indpb}
+                    POP_SIZE: {current_pop_size}
+                    MAX_GENERATIONS: {current_max_generations}
+                    """
             )
 
-        resnet_distances_norm = norm_distances.loc[:, resnet_cols]
+            # Normalize distances inside cluster
+            norm_distances = cluster_distances.loc[
+                :, resnet_cols + ["dlib_distance"]
+            ]  # Get numerical columns to normalize
+            for col in norm_distances.columns:
+                norm_distances[col] = (
+                    norm_distances[col] - norm_distances[col].min()
+                ) / (norm_distances[col].max() - norm_distances[col].min())
 
-        # Prepare DEAP
-        toolbox = base.Toolbox()
-        toolbox.register("attr_float", random)
-        toolbox.register(
-            "individual",
-            tools.initRepeat,
-            creator.Individual,
-            toolbox.attr_float,
-            n=IND_SIZE,
-        )
-        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        toolbox.register(
-            "evaluate",
-            current_error_fun,
-            cluster_distances=cluster_distances,
-            resnet_distances_norm=resnet_distances_norm,
-        )
-        toolbox.register("mate", tools.cxTwoPoint)
-        toolbox.register("mutate", tools.mutFlipBit, indpb=current_indpb)
-        toolbox.register("select", tools.selTournament, tournsize=3)
+            resnet_distances_norm = norm_distances.loc[:, resnet_cols]
 
-        # Start AG Search
-        start_time = time()
-        pop = toolbox.population(n=current_pop_size)
+            # Prepare DEAP
+            toolbox = base.Toolbox()
+            toolbox.register("attr_float", random)
+            toolbox.register(
+                "individual",
+                tools.initRepeat,
+                creator.Individual,
+                toolbox.attr_float,
+                n=IND_SIZE,
+            )
+            toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+            toolbox.register(
+                "evaluate",
+                current_error_fun,
+                cluster_distances=cluster_distances,
+                resnet_distances_norm=resnet_distances_norm,
+            )
+            toolbox.register("mate", tools.cxTwoPoint)
+            toolbox.register("mutate", tools.mutFlipBit, indpb=current_indpb)
+            toolbox.register("select", tools.selTournament, tournsize=3)
 
-        fitness_time = time()
-        print(f"Evaluating {current_pop_size} individuals")
-        send_simple_message(f"Evaluating {current_pop_size} individuals")
-        # Evaluate the entire population
-        for ind, fit in zip(pop, map(toolbox.evaluate, pop)):
-            ind.fitness.values = fit
-        print(f"Time to evaluate fitness {(time() - fitness_time)//60} minutes")
-        send_simple_message(
-            f"Opt2 (note): Time to evaluate fitness {(time() - fitness_time)//60} minutes for {current_pop_size} individuals"
-        )
+            # Start AG Search
+            start_time = time()
+            pop = toolbox.population(n=current_pop_size)
 
-        # Extracting all the fitnesses of
-        fits = [ind.fitness.values[0] for ind in pop]
-
-        # Variable keeping track of the number of generations
-        g = 0
-
-        # Output files for best individuals
-        individuals_folder = RESULTS_FOLDER.joinpath(
-            f"individuals_{str(exp_id).zfill(5)}"
-        )
-        best_individual_file = individuals_folder.joinpath("best_individual.json")
-        best_individuals_file = individuals_folder.joinpath("best_individuals.json")
-
-        low_std_times = 0
-        last_max_fit = -1e9
-        last_min_fit = +1e9
-        best_generation = 0
-        bests = []
-
-        # Begin the evolution
-        while g < current_max_generations:
-            # A new generation
-            g = g + 1
-            print("-- Generation %i --" % g)
-
-            # Select the next generation individuals
-            offspring = toolbox.select(pop, len(pop))
-
-            # Clone the selected individuals
-            offspring = list(map(toolbox.clone, offspring))
-
-            # Apply crossover and mutation on the offspring
-            for child1, child2 in zip(offspring[::2], offspring[1::2]):
-                if random() < current_cxpb:
-                    toolbox.mate(child1, child2)
-                    # Invalidate fitnesses for the new individuals
-                    del child1.fitness.values
-                    del child2.fitness.values
-
-            for mutant in offspring:
-                if random() < current_mutpb:
-                    toolbox.mutate(mutant)
-                    # Invalidate fitnesses for the new individual
-                    del mutant.fitness.values
-
-            # Evaluate the individuals with an invalid fitness (The new ones)
-            invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-            fitnesses = map(toolbox.evaluate, invalid_ind)
-            for ind, fit in zip(invalid_ind, fitnesses):
+            fitness_time = time()
+            print(f"Evaluating {current_pop_size} individuals")
+            # Evaluate the entire population
+            for ind, fit in zip(pop, map(toolbox.evaluate, pop)):
                 ind.fitness.values = fit
+            print(f"Time to evaluate fitness {(time() - fitness_time)//60} minutes")
 
-            # Replace population with offspring
-            pop[:] = offspring
-
-            # Gather all the fitnesses in one list and print the stats
+            # Extracting all the fitnesses of
             fits = [ind.fitness.values[0] for ind in pop]
 
-            length = len(pop)
-            mean = sum(fits) / length
-            sum2 = sum(x * x for x in fits)
-            std = abs(sum2 / length - mean**2) ** 0.5
+            # Variable keeping track of the number of generations
+            g = 0
 
-            print("  Min %s" % min(fits))
-            print("  Max %s" % max(fits))
-            print("  Avg %s" % mean)
-            print("  Std %s" % std)
+            # Output files for best individuals
+            individuals_folder = RESULTS_FOLDER.joinpath(
+                f"{str(exp_id).zfill(5)}_individuals"
+            )
+            individuals_folder.mkdir(exist_ok=True)
+            best_individual_file = individuals_folder.joinpath("best_individual.json")
+            best_individuals_file = individuals_folder.joinpath("best_individuals.json")
 
-            if std < 3e-3:
-                low_std_times += 1
+            low_std_times = 0
+            last_max_fit = -1e9
+            last_min_fit = +1e9
+            best_generation = 0
+            last_gen_reset = 0
+            bests = []
 
-            # If we face NO_BEST_MAX_GENERATIONS generations without improvement, reset the population
-            if g - best_generation > NO_BEST_MAX_GENERATIONS:
-                low_std_times = 0
+            # Begin the evolution
+            while g < current_max_generations:
+                # A new generation
+                g = g + 1
+                print(f"Generation {g}")
 
-                # Reset Pop
-                print("No best found for too long, Resetting pop")
-                pop = toolbox.population(n=current_pop_size)
+                # Select the next generation individuals
+                offspring = toolbox.select(pop, len(pop))
 
-                # Evaluate the entire population
-                for ind, fit in zip(pop, map(toolbox.evaluate, pop)):
+                # Clone the selected individuals
+                offspring = list(map(toolbox.clone, offspring))
+
+                # Apply crossover and mutation on the offspring
+                for child1, child2 in zip(offspring[::2], offspring[1::2]):
+                    if random() < current_cxpb:
+                        toolbox.mate(child1, child2)
+                        # Invalidate fitnesses for the new individuals
+                        del child1.fitness.values
+                        del child2.fitness.values
+
+                for mutant in offspring:
+                    if random() < current_mutpb:
+                        toolbox.mutate(mutant)
+                        # Invalidate fitnesses for the new individual
+                        del mutant.fitness.values
+
+                # Evaluate the individuals with an invalid fitness (The new ones)
+                invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+                fitnesses = map(toolbox.evaluate, invalid_ind)
+                for ind, fit in zip(invalid_ind, fitnesses):
                     ind.fitness.values = fit
 
-                # Extracting all the fitnesses of
+                # Replace population with offspring
+                pop[:] = offspring
+
+                # Gather all the fitnesses in one list and print the stats
                 fits = [ind.fitness.values[0] for ind in pop]
 
-            # Minimization (Error)
-            if min(fits) < last_min_fit:
-                last_min_fit = min(fits)
-                best_generation = g
-                best_idx = fits.index(last_min_fit)
-                best = pop[best_idx]
+                length = len(pop)
+                mean = sum(fits) / length
+                sum2 = sum(x * x for x in fits)
+                std = abs(sum2 / length - mean**2) ** 0.5
 
-                print(f"New best found (Gen: {best_generation}): {last_min_fit}")
-                # send_simple_message(f"New best found (Gen: {best_generation}): {last_min_fit}")
-                json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
+                if std < 3e-3:
+                    low_std_times += 1
 
-                bests.append(
-                    {
-                        "generation": best_generation,
-                        "fitness": last_min_fit,
-                        "best_data": dict(zip(resnet_cols, best)),
-                    }
-                )
-                json.dump(bests, open(best_individuals_file, "w"))
+                # If we face NO_BEST_MAX_GENERATIONS generations without improvement, reset the population
+                if (g - best_generation > NO_BEST_MAX_GENERATIONS) and (
+                    g - last_gen_reset > NO_BEST_MAX_GENERATIONS
+                ):
+                    last_gen_reset = g
+                    low_std_times = 0
 
-        min_rank, max_rank, median_rank, mean_rank = calc_rank(
-            best, cluster_distances, resnet_distances_norm
-        )
-        with open(RESULTS_FILE, "a") as f:
-            tmp_line = (
-                f"{exp_id},{cluster},{current_error_fun},{current_cxpb},{current_mutpb}"
+                    # Reset Pop
+                    print("No best found for too long, Resetting pop")
+                    pop = toolbox.population(n=current_pop_size)
+
+                    # Evaluate the entire population
+                    for ind, fit in zip(pop, map(toolbox.evaluate, pop)):
+                        ind.fitness.values = fit
+
+                    # Extracting all the fitnesses of
+                    fits = [ind.fitness.values[0] for ind in pop]
+
+                # Minimization (Error)
+                if min(fits) < last_min_fit:
+                    last_min_fit = min(fits)
+                    best_generation = g
+                    best_idx = fits.index(last_min_fit)
+                    best = pop[best_idx]
+
+                    print(f"New best found (Gen: {best_generation}): {last_min_fit}")
+                    json.dump(
+                        dict(zip(resnet_cols, best)), open(best_individual_file, "w")
+                    )
+
+                    bests.append(
+                        {
+                            "generation": best_generation,
+                            "fitness": last_min_fit,
+                            "best_data": dict(zip(resnet_cols, best)),
+                        }
+                    )
+                    json.dump(bests, open(best_individuals_file, "w"))
+
+            min_rank, max_rank, median_rank, mean_rank = calc_rank(
+                best, cluster_distances, resnet_distances_norm
             )
-            tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations}"
-            tmp_line += f",{best_generation},{last_min_fit},{min_rank},{max_rank},{median_rank},{mean_rank}\n"
-            f.write(tmp_line)
+            with open(RESULTS_FILE, "a") as f:
+                tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"
+                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{best_generation},{last_min_fit}"
+                tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
+                f.write(tmp_line)
 
-        print(
-            f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
-        )
-        _ = send_simple_message(
-            f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
-        )
+            print(
+                f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
+            )
+            # _ = send_simple_message(
+            #     f"Done: {g} generations. Best fitness: {last_min_fit} at generation {best_generation} in {(time() - start_time)//60} minutes"
+            # )
