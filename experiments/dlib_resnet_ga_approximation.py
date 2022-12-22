@@ -48,9 +48,8 @@ MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
-RANK_TOP_N = 30
 
-RANK_ERROR_IMGS_LIMIT = 100
+RANK_ERROR_IMGS_LIMIT = 10
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -188,8 +187,8 @@ def rank_error(individual, cluster_distances, resnet_distances_norm):
             by_comb_distances.img1 == img
         ].reset_index(drop=True)
 
-        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
-            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        tmp_corr = dlib_img_distances.img2.corr(
+            comb_img_distances.img2, method="kendall"
         )
 
         if not np.isnan(tmp_corr):
@@ -328,8 +327,8 @@ def calc_rank(individual, cluster_distances, resnet_distances_norm):
             by_comb_distances.img1 == img
         ].reset_index(drop=True)
 
-        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
-            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        tmp_corr = dlib_img_distances.img2.corr(
+            comb_img_distances.img2, method="kendall"
         )
 
         if not np.isnan(tmp_corr):
@@ -360,8 +359,8 @@ def gen_imgs_ranks(
             by_comb_distances.img1 == img
         ].reset_index(drop=True)
 
-        tmp_corr = dlib_img_distances.iloc[:RANK_TOP_N].img2.corr(
-            comb_img_distances.iloc[:RANK_TOP_N].img2, method="kendall"
+        tmp_corr = dlib_img_distances.img2.corr(
+            comb_img_distances.img2, method="kendall"
         )
 
         if not np.isnan(tmp_corr):
@@ -374,18 +373,18 @@ def run_experiment():
 
     with open(RESULTS_FILE, "w") as f:
         f.write(
-            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,rank_top_n,no_best_max_gens,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
+            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,no_best_max_gens,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
         )
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
     creator.create("Individual", list, fitness=creator.FitnessMin)
 
     def params_generator():
-        for cxpb in CXPB:
-            for mutpb in MUTPB:
+        for max_generations in MAX_GENERATIONS:
+            for pop_size in POP_SIZE:
                 for indpb in INDPB:
-                    for pop_size in POP_SIZE:
-                        for max_generations in MAX_GENERATIONS:
+                    for mutpb in MUTPB:
+                        for cxpb in CXPB:
                             for error_fun_name in ERROR_FUNCTIONS_NAMES:
                                 yield {
                                     "cxpb": cxpb,
@@ -601,7 +600,7 @@ def run_experiment():
 
             with open(RESULTS_FILE, "a") as f:
                 tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"
-                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{RANK_TOP_N},{NO_BEST_MAX_GENERATIONS},{best_generation},{last_min_fit}"
+                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{NO_BEST_MAX_GENERATIONS},{best_generation},{last_min_fit}"
                 tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
                 f.write(tmp_line)
 
