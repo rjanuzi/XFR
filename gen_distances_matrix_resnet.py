@@ -16,7 +16,7 @@ logging.basicConfig(
 __NAMES_TO_CALCULATE_DISTANCES_PATH = Path("names_to_calculate_distances.json")
 
 
-def __get_names_to_calculate(how_many_imgs_by_person=5):
+def get_names_to_calculate(how_many_imgs_by_person=5):
 
     # Recover from file if it exists
     if __NAMES_TO_CALCULATE_DISTANCES_PATH.exists():
@@ -81,7 +81,7 @@ def __get_names_to_calculate(how_many_imgs_by_person=5):
 
 if __name__ == "__main__":
     try:
-        imgs_names = __get_names_to_calculate()
+        imgs_names = get_names_to_calculate()
 
         logging.info("Starting ResNET distances calculation")
         send_simple_message("Starting ResNET distances calculation")

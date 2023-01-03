@@ -13,3 +13,8 @@ test_nvcc.lib
 *bkp_results.json
 *dlib_fr_results.json
 *.log
+experiments_imgs_index.json
+names_to_calculate_distances.json
+ffhq-dataset-v2.json
+connect_to_vm.sh
+copy_experiments_results.sh

@@ -4,7 +4,7 @@ import traceback
 from pathlib import Path
 
 from dataset import DATASET_KIND_ALIGNED, DATASET_KIND_STR, gen_dataset_index
-from fr.distances_generator import gen_dlib_distances, gen_hog_distances
+from fr.distances_generator import gen_dlib_distances, gen_dlib_faceparts_distances
 from fr.face_decomposition import decompose_face
 from util._telegram import send_simple_message
 
@@ -16,7 +16,7 @@ logging.basicConfig(
 __NAMES_TO_CALCULATE_DISTANCES_PATH = Path("names_to_calculate_distances.json")
 
 
-def __get_names_to_calculate(how_many_imgs_by_person=5):
+def get_names_to_calculate(how_many_imgs_by_person=5):
 
     # Recover from file if it exists
     if __NAMES_TO_CALCULATE_DISTANCES_PATH.exists():
@@ -81,10 +81,14 @@ def __get_names_to_calculate(how_many_imgs_by_person=5):
 
 if __name__ == "__main__":
     try:
-        imgs_names = __get_names_to_calculate()
-        logging.info("Starting DLIB distances calculation")
-        gen_dlib_distances(imgs_names=imgs_names)
-        send_simple_message("Gen DLIB distances matrix done!")
+        imgs_names = get_names_to_calculate()
+        # logging.info("Starting DLIB distances calculation")
+        # gen_dlib_distances(imgs_names=imgs_names)
+        # send_simple_message("Gen DLIB distances matrix done!")
+
+        logging.info("Starting DLIB Faceparts distances calculation")
+        gen_dlib_faceparts_distances(imgs_names=imgs_names)
+        send_simple_message("Gen DLIB Faceparts distances matrix done!")
     except:
         send_simple_message("Error generating distances matrix.")
         logging.error(traceback.format_exc())
