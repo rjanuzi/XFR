@@ -44,6 +44,73 @@ def decompose_face(img_name: str) -> dict:
     return face_parts
 
 
+def decompose_face_no_blank(img_name: str, target_shape=(128, 128)) -> dict:
+    """
+    Decompose the face into its parts, but without adding blank space to the image.
+
+    :param img_name: The name of the image to decompose
+    :param target_shape: The target shape of the image. The target shape for this version SHALL BE SQUARED (width == height).
+
+    :return: A dictionary with the face parts, where the key is the class of the part and the value is the image of the part.
+    """
+    seg_map = np.load(get_file_path(img_name, DATASET_KIND_SEG_MAP, ".npy"))
+    original_img = Image.open(get_file_path(img_name, DATASET_KIND_ALIGNED, ".png"))
+    original_img = original_img.resize(
+        (__DEFAULT_WIDTH, __DEFAULT_HEIGHT), Image.LANCZOS
+    )
+    original_img_array = np.array(original_img)
+
+    face_parts = {}
+    for seg_class in np.unique(seg_map):
+        tmp_idxes = np.where(seg_map == seg_class)
+
+        # Get ROI crop limits
+        y_min = tmp_idxes[0].min()
+        y_max = tmp_idxes[0].max()
+        x_min = tmp_idxes[1].min()
+        x_max = tmp_idxes[1].max()
+
+        # Get ROI size
+        roi_width = x_max - x_min
+        roi_height = y_max - y_min
+
+        if roi_width > roi_height:
+            # If the ROI is wider than it is high, expand the ROI to the target size
+            height_inc = (roi_width - roi_height) // 2
+            y_min -= height_inc
+            y_max += height_inc
+
+            # If the ROI is expanded to the top, make sure it doesn't go out of bounds
+            if y_min < 0:
+                y_max += abs(y_min)
+                y_min = 0
+
+        elif roi_height > roi_width:
+            # If the ROI is higher than it is wide, expand the ROI to the target size
+            width_inc = (roi_height - roi_width) // 2
+            x_min -= width_inc
+            x_max += width_inc
+
+            # If the ROI is expanded to the left, make sure it doesn't go out of bounds
+            if x_min < 0:
+                x_max += abs(x_min)
+                x_min = 0
+
+        # Crop the image using the ROI limits, adjusted to squared size and trying to center the ROI
+        cropped_img = original_img_array[
+            y_min:y_max,
+            x_min:x_max,
+        ]
+
+        # Resize the image to the target size (both same aspect ratio)
+        cropped_img = Image.fromarray(cropped_img)
+        cropped_img = cropped_img.resize(size=target_shape)
+
+        face_parts[seg_class] = np.array(cropped_img)
+
+    return face_parts
+
+
 def crop_roi(img_array: np.ndarray, use_hog_proportion) -> np.ndarray:
     roi_idxes = np.where(img_array != 0)
 
@@ -77,6 +144,22 @@ def crop_roi(img_array: np.ndarray, use_hog_proportion) -> np.ndarray:
     return cropped_img
 
 
+def crop_roi_no_blank(img_array: np.ndarray, target_shape=(128, 128)) -> np.ndarray:
+    roi_idxes = np.where(img_array != 0)
+
+    # Get ROI crop limits
+    y_min = roi_idxes[0].min()
+    y_max = roi_idxes[0].max()
+    x_min = roi_idxes[1].min()
+    x_max = roi_idxes[1].max()
+
+    # Simply crop the ROI from image
+    return img_array[
+        y_min:y_max,
+        x_min:x_max,
+    ]
+
+
 def get_face(face_parts: dict, use_hog_proportion=False):
     try:
         face = face_parts[__FACE_CLASS]
@@ -85,11 +168,12 @@ def get_face(face_parts: dict, use_hog_proportion=False):
         return None
 
 
-def get_left_eye(face_parts: dict, use_hog_proportion=False):
+def get_left_eye(face_parts: dict, use_hog_proportion=False, target_shape=(128, 128)):
     try:
         left_eye = face_parts[__LEFT_EYE_CLASS]
 
-        return crop_roi(img_array=left_eye, use_hog_proportion=use_hog_proportion)
+        # return crop_roi(img_array=left_eye, use_hog_proportion=use_hog_proportion)
+        return crop_roi_no_blank(img_array=left_eye, target_shape=(128, 128))
     except KeyError:
         return None
 
