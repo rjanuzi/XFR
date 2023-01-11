@@ -1,6 +1,7 @@
 from turtle import right
-from matplotlib import use
+
 import numpy as np
+from matplotlib import use
 from PIL import Image
 
 from dataset import DATASET_KIND_ALIGNED, DATASET_KIND_SEG_MAP, get_file_path
@@ -62,51 +63,54 @@ def decompose_face_no_blank(img_name: str, target_shape=(128, 128)) -> dict:
 
     face_parts = {}
     for seg_class in np.unique(seg_map):
-        tmp_idxes = np.where(seg_map == seg_class)
+        try:
+            tmp_idxes = np.where(seg_map == seg_class)
 
-        # Get ROI crop limits
-        y_min = tmp_idxes[0].min()
-        y_max = tmp_idxes[0].max()
-        x_min = tmp_idxes[1].min()
-        x_max = tmp_idxes[1].max()
+            # Get ROI crop limits
+            y_min = tmp_idxes[0].min()
+            y_max = tmp_idxes[0].max()
+            x_min = tmp_idxes[1].min()
+            x_max = tmp_idxes[1].max()
 
-        # Get ROI size
-        roi_width = x_max - x_min
-        roi_height = y_max - y_min
+            # Get ROI size
+            roi_width = x_max - x_min
+            roi_height = y_max - y_min
 
-        if roi_width > roi_height:
-            # If the ROI is wider than it is high, expand the ROI to the target size
-            height_inc = (roi_width - roi_height) // 2
-            y_min -= height_inc
-            y_max += height_inc
+            if roi_width > roi_height:
+                # If the ROI is wider than it is high, expand the ROI to the target size
+                height_inc = (roi_width - roi_height) // 2
+                y_min -= height_inc
+                y_max += height_inc
 
-            # If the ROI is expanded to the top, make sure it doesn't go out of bounds
-            if y_min < 0:
-                y_max += abs(y_min)
-                y_min = 0
+                # If the ROI is expanded to the top, make sure it doesn't go out of bounds
+                if y_min < 0:
+                    y_max += abs(y_min)
+                    y_min = 0
 
-        elif roi_height > roi_width:
-            # If the ROI is higher than it is wide, expand the ROI to the target size
-            width_inc = (roi_height - roi_width) // 2
-            x_min -= width_inc
-            x_max += width_inc
+            elif roi_height > roi_width:
+                # If the ROI is higher than it is wide, expand the ROI to the target size
+                width_inc = (roi_height - roi_width) // 2
+                x_min -= width_inc
+                x_max += width_inc
 
-            # If the ROI is expanded to the left, make sure it doesn't go out of bounds
-            if x_min < 0:
-                x_max += abs(x_min)
-                x_min = 0
+                # If the ROI is expanded to the left, make sure it doesn't go out of bounds
+                if x_min < 0:
+                    x_max += abs(x_min)
+                    x_min = 0
 
-        # Crop the image using the ROI limits, adjusted to squared size and trying to center the ROI
-        cropped_img = original_img_array[
-            y_min:y_max,
-            x_min:x_max,
-        ]
+            # Crop the image using the ROI limits, adjusted to squared size and trying to center the ROI
+            cropped_img = original_img_array[
+                y_min:y_max,
+                x_min:x_max,
+            ]
 
-        # Resize the image to the target size (both same aspect ratio)
-        cropped_img = Image.fromarray(cropped_img)
-        cropped_img = cropped_img.resize(size=target_shape)
+            # Resize the image to the target size (both same aspect ratio)
+            cropped_img = Image.fromarray(cropped_img)
+            cropped_img = cropped_img.resize(size=target_shape)
 
-        face_parts[seg_class] = np.array(cropped_img)
+            face_parts[seg_class] = np.array(cropped_img)
+        except:
+            face_parts[seg_class] = None
 
     return face_parts
 
@@ -144,161 +148,195 @@ def crop_roi(img_array: np.ndarray, use_hog_proportion) -> np.ndarray:
     return cropped_img
 
 
-def crop_roi_no_blank(img_array: np.ndarray, target_shape=(128, 128)) -> np.ndarray:
-    roi_idxes = np.where(img_array != 0)
-
-    # Get ROI crop limits
-    y_min = roi_idxes[0].min()
-    y_max = roi_idxes[0].max()
-    x_min = roi_idxes[1].min()
-    x_max = roi_idxes[1].max()
-
-    # Simply crop the ROI from image
-    return img_array[
-        y_min:y_max,
-        x_min:x_max,
-    ]
-
-
-def get_face(face_parts: dict, use_hog_proportion=False):
+def get_face(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         face = face_parts[__FACE_CLASS]
+        if no_blank:
+            return face
         return crop_roi(img_array=face, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_left_eye(face_parts: dict, use_hog_proportion=False, target_shape=(128, 128)):
+def get_left_eye(
+    face_parts: dict, use_hog_proportion=False, target_shape=(128, 128), no_blank=False
+):
     try:
         left_eye = face_parts[__LEFT_EYE_CLASS]
 
-        # return crop_roi(img_array=left_eye, use_hog_proportion=use_hog_proportion)
-        return crop_roi_no_blank(img_array=left_eye, target_shape=(128, 128))
+        if no_blank:
+            return left_eye
+        else:
+            return crop_roi(img_array=left_eye, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_right_eye(face_parts: dict, use_hog_proportion=False):
+def get_right_eye(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         right_eye = face_parts[__RIGHT_EYE_CLASS]
+
+        if no_blank:
+            return right_eye
 
         return crop_roi(img_array=right_eye, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_eyes(face_parts: dict, use_hog_proportion=False):
+def get_eyes(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_eye = face_parts[__LEFT_EYE_CLASS]
         right_eye = face_parts[__RIGHT_EYE_CLASS]
 
         mixed = left_eye + right_eye
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=left_eye.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_left_eyebrow(face_parts: dict, use_hog_proportion=False):
+def get_left_eyebrow(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_eyebrow = face_parts[__LEFT_EYE_BROW_CLASS]
+
+        if no_blank:
+            return left_eyebrow
 
         return crop_roi(img_array=left_eyebrow, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_rigth_eyebrow(face_parts: dict, use_hog_proportion=False):
+def get_rigth_eyebrow(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         right_eyebrow = face_parts[__RIGHT_EYE_BROW_CLASS]
+
+        if no_blank:
+            return right_eyebrow
 
         return crop_roi(img_array=right_eyebrow, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_eyebrows(face_parts: dict, use_hog_proportion=False):
+def get_eyebrows(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_eyebrow = face_parts[__LEFT_EYE_BROW_CLASS]
         right_eyebrow = face_parts[__RIGHT_EYE_BROW_CLASS]
 
         mixed = left_eyebrow + right_eyebrow
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=left_eyebrow.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_left_ear(face_parts: dict, use_hog_proportion=False):
+def get_left_ear(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_ear = face_parts[__LEFT_EAR_CLASS]
+
+        if no_blank:
+            return left_ear
 
         return crop_roi(img_array=left_ear, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_right_ear(face_parts: dict, use_hog_proportion=False):
+def get_right_ear(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         right_ear = face_parts[__RIGHT_EAR_CLASS]
+
+        if no_blank:
+            return right_ear
 
         return crop_roi(img_array=right_ear, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_ears(face_parts: dict, use_hog_proportion=False):
+def get_ears(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_ear = face_parts[__LEFT_EAR_CLASS]
         right_ear = face_parts[__RIGHT_EAR_CLASS]
 
         mixed = left_ear + right_ear
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=left_ear.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_nose(face_parts: dict, use_hog_proportion=False):
+def get_nose(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         nose = face_parts[__NOSE_CLASS]
+
+        if no_blank:
+            return nose
 
         return crop_roi(img_array=nose, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_lower_lip(face_parts: dict, use_hog_proportion=False):
+def get_lower_lip(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         lower_lip = face_parts[__LOWER_LIP_CLASS]
+
+        if no_blank:
+            return lower_lip
 
         return crop_roi(img_array=lower_lip, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_upper_lip(face_parts: dict, use_hog_proportion=False):
+def get_upper_lip(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         upper_lip = face_parts[__UPPER_LIP_CLASS]
+
+        if no_blank:
+            return upper_lip
 
         return crop_roi(img_array=upper_lip, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_mouth(face_parts: dict, use_hog_proportion=False):
+def get_mouth(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         upper_lip = face_parts[__UPPER_LIP_CLASS]
         lower_lip = face_parts[__LOWER_LIP_CLASS]
 
         mixed = upper_lip + lower_lip
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=upper_lip.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_mouth_and_nose(face_parts: dict, use_hog_proportion=False):
+def get_mouth_and_nose(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         upper_lip = face_parts[__UPPER_LIP_CLASS]
         lower_lip = face_parts[__LOWER_LIP_CLASS]
@@ -306,12 +344,17 @@ def get_mouth_and_nose(face_parts: dict, use_hog_proportion=False):
 
         mixed = upper_lip + lower_lip + nose
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=upper_lip.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_eyes_and_eyebrows(face_parts: dict, use_hog_proportion=False):
+def get_eyes_and_eyebrows(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_eye = face_parts[__LEFT_EYE_CLASS]
         right_eye = face_parts[__RIGHT_EYE_CLASS]
@@ -320,12 +363,17 @@ def get_eyes_and_eyebrows(face_parts: dict, use_hog_proportion=False):
 
         mixed = left_eye + right_eye + left_eyebrow + right_eyebrow
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=left_eye.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_eyes_and_nose(face_parts: dict, use_hog_proportion=False):
+def get_eyes_and_nose(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         left_eye = face_parts[__LEFT_EYE_CLASS]
         right_eye = face_parts[__RIGHT_EYE_CLASS]
@@ -333,12 +381,17 @@ def get_eyes_and_nose(face_parts: dict, use_hog_proportion=False):
 
         mixed = left_eye + right_eye + nose
 
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=left_eye.shape[:2])
+            return np.array(tmp_img)
+
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
         return None
 
 
-def get_full_face(face_parts: dict, use_hog_proportion=False):
+def get_full_face(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
         face = face_parts[__FACE_CLASS]
         left_eye = face_parts[__LEFT_EYE_CLASS]
@@ -357,6 +410,11 @@ def get_full_face(face_parts: dict, use_hog_proportion=False):
         mixed += nose
         mixed += upper_lip
         mixed += lower_lip
+
+        if no_blank:
+            tmp_img = Image.fromarray(mixed)
+            tmp_img = tmp_img.resize(size=face.shape[:2])
+            return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
     except KeyError:
