@@ -16,12 +16,14 @@ from util._telegram import send_simple_message
 ### Prepare data and generate extra information
 
 
-EXPERIMENT_ID = 4
+EXPERIMENT_ID = 1
+CLUSTER_ID = 0
 
 
 DLIB_DISTANCES_FILE = Path("fr", "distances_dlib.json")
 RESNET_DISTANCES_FILE = Path("fr", "distances_resnet.json")
 RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
+DLIB_DATASET_CLUSTERS_FILE = Path("fr", "dlib_clusters.json")
 
 BEST_INDIVIDUAL_FILE = Path(
     "fr",
@@ -78,12 +80,25 @@ distances["same_person"] = (distances.person1 == distances.person2).apply(
     lambda s: "same" if s else "different"
 )
 
+# Load clusters
+if CLUSTER_ID is not None:
+    clusters_ref = pd.DataFrame(data=json.load(open(DLIB_DATASET_CLUSTERS_FILE, "r")))
+    clusters_ref.set_index("label", inplace=True)
+
+    distances["img1_cluster"] = distances.img1.apply(
+        lambda i: clusters_ref.cluster.get(i, None)
+    )
+    distances["img2_cluster"] = distances.img2.apply(
+        lambda i: clusters_ref.cluster.get(i, None)
+    )
+
 # Delete unnecessary columns
 distances.drop(columns="pair", inplace=True)
 
+# Sort columns by name
+distances = distances.reindex(sorted(distances.columns), axis=1)
+
 # ### Genetic Programming (GP) Search
-
-
 RESNET_COLS_TO_IGNORE = [
     "resnet_left_ear",
     "resnet_right_ear",
@@ -101,7 +116,6 @@ resnet_cols = list(
 
 IND_SIZE = len(resnet_cols)
 
-
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 CXPB = 0.5  # Probability with which two individuals are crossed
 MUTPB = 0.25  # Probability for mutating an individual
@@ -118,6 +132,13 @@ cleared_distances = cleared_distances[
 ]  # Remove same image pairs
 cleared_distances.sort_values(by="dlib_distance", ascending=True, inplace=True)
 
+# Check if we will run the experiment only inside a cluster
+if CLUSTER_ID is not None:
+    cleared_distances = cleared_distances[
+        (cleared_distances.img1_cluster == CLUSTER_ID)
+        & (cleared_distances.img2_cluster == CLUSTER_ID)
+    ]
+
 sub_df = cleared_distances.iloc[:SUB_SET_SIZE]
 
 # Normalize distances
@@ -130,7 +151,6 @@ for col in sub_df.columns:
     )
 
 resnet_distances_norm = sub_df.loc[:, resnet_cols]
-
 
 # Define new functions
 def protectedDiv(left, right):
@@ -153,27 +173,27 @@ def log10(x):
 
 
 def pow2(x):
-    return x ** 2
+    return x**2
 
 
 def pow3(x):
-    return x ** 3
+    return x**3
 
 
 def pow4(x):
-    return x ** 4
+    return x**4
 
 
 def _2pow(x):
-    return 2 ** x
+    return 2**x
 
 
 def _3pow(x):
-    return 3 ** x
+    return 3**x
 
 
 def _4pow(x):
-    return 4 ** x
+    return 4**x
 
 
 pset = gp.PrimitiveSet("MAIN", IND_SIZE)
@@ -269,6 +289,9 @@ end_time = time()
 print(f"GP finished in {int((end_time - start_time)/60)} minutes")
 _ = send_simple_message(f"GP finished in {int((end_time - start_time)/60)} minutes")
 
+end_time = time()
+print(f"GP finished in {int((end_time - start_time)/60)} minutes")
+_ = send_simple_message(f"GP finished in {int((end_time - start_time)/60)} minutes")
 
 best = hof[0]
 best_tree = gp.PrimitiveTree(best)
