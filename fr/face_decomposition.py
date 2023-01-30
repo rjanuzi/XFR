@@ -154,7 +154,7 @@ def get_face(face_parts: dict, use_hog_proportion=False, no_blank=False):
         if no_blank:
             return face
         return crop_roi(img_array=face, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -168,7 +168,7 @@ def get_left_eye(
             return left_eye
         else:
             return crop_roi(img_array=left_eye, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -180,7 +180,7 @@ def get_right_eye(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return right_eye
 
         return crop_roi(img_array=right_eye, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -197,7 +197,7 @@ def get_eyes(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -209,7 +209,7 @@ def get_left_eyebrow(face_parts: dict, use_hog_proportion=False, no_blank=False)
             return left_eyebrow
 
         return crop_roi(img_array=left_eyebrow, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -221,7 +221,7 @@ def get_rigth_eyebrow(face_parts: dict, use_hog_proportion=False, no_blank=False
             return right_eyebrow
 
         return crop_roi(img_array=right_eyebrow, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -238,7 +238,7 @@ def get_eyebrows(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -250,7 +250,7 @@ def get_left_ear(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return left_ear
 
         return crop_roi(img_array=left_ear, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -262,7 +262,7 @@ def get_right_ear(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return right_ear
 
         return crop_roi(img_array=right_ear, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -279,7 +279,7 @@ def get_ears(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -291,7 +291,7 @@ def get_nose(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return nose
 
         return crop_roi(img_array=nose, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -303,7 +303,7 @@ def get_lower_lip(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return lower_lip
 
         return crop_roi(img_array=lower_lip, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -315,7 +315,7 @@ def get_upper_lip(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return upper_lip
 
         return crop_roi(img_array=upper_lip, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -332,7 +332,7 @@ def get_mouth(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -350,7 +350,7 @@ def get_mouth_and_nose(face_parts: dict, use_hog_proportion=False, no_blank=Fals
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -369,7 +369,7 @@ def get_eyes_and_eyebrows(face_parts: dict, use_hog_proportion=False, no_blank=F
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -387,7 +387,7 @@ def get_eyes_and_nose(face_parts: dict, use_hog_proportion=False, no_blank=False
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
 
 
@@ -417,5 +417,5 @@ def get_full_face(face_parts: dict, use_hog_proportion=False, no_blank=False):
             return np.array(tmp_img)
 
         return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
-    except KeyError:
+    except Exception:
         return None
