@@ -92,6 +92,13 @@ if __name__ == "__main__":
         send_simple_message("Starting ResNET Faceparts distances calculation")
         gen_resnet_faceparts_distances(imgs_names=imgs_names)
         send_simple_message("Gen ResNET Faceparts distances matrix done!")
+
+        logging.info("Starting ResNET Faceparts (No Blank) distances calculation")
+        send_simple_message(
+            "Starting ResNET Faceparts (No Blank) distances calculation"
+        )
+        gen_resnet_faceparts_distances(imgs_names=imgs_names, no_blank=True)
+        send_simple_message("Gen ResNET Faceparts (No Blank) distances matrix done!")
     except:
         send_simple_message("Error generating ResNET distances matrix.")
         logging.error(traceback.format_exc())

@@ -5,13 +5,30 @@ from pathlib import Path
 from time import time
 
 import numpy as np
+
 from dataset import DATASET_KIND_ALIGNED, get_file_path
-import dataset
-from util._telegram import send_simple_message
-
-from fr.resnet_descriptor import calc_facepart_features, calc_tf_resnet_distance
-
-from fr.dlib import DlibFr
+from fr.dlib import (
+    DLIB_OPT_ALL,
+    DLIB_OPT_EARS,
+    DLIB_OPT_EYEBROWS,
+    DLIB_OPT_EYES,
+    DLIB_OPT_EYES_AND_EYEBROWS,
+    DLIB_OPT_EYES_AND_NOSE,
+    DLIB_OPT_FACE,
+    DLIB_OPT_FULL_FACE,
+    DLIB_OPT_LEFT_EAR,
+    DLIB_OPT_LEFT_EYE,
+    DLIB_OPT_LEFT_EYEBROW,
+    DLIB_OPT_LOWER_LIP,
+    DLIB_OPT_MOUTH,
+    DLIB_OPT_MOUTH_AND_NOSE,
+    DLIB_OPT_NOSE,
+    DLIB_OPT_RIGHT_EAR,
+    DLIB_OPT_RIGHT_EYE,
+    DLIB_OPT_RIGHT_EYEBROW,
+    DLIB_OPT_UPPER_LIP,
+    DlibFr,
+)
 from fr.face_decomposition import decompose_face
 from fr.hog_descriptor import (
     HOG_OPT_ALL,
@@ -36,28 +53,7 @@ from fr.hog_descriptor import (
     calc_hog,
     compare_hogs,
 )
-
-from fr.dlib import (
-    DLIB_OPT_ALL,
-    DLIB_OPT_EARS,
-    DLIB_OPT_EYEBROWS,
-    DLIB_OPT_EYES,
-    DLIB_OPT_EYES_AND_EYEBROWS,
-    DLIB_OPT_EYES_AND_NOSE,
-    DLIB_OPT_FACE,
-    DLIB_OPT_FULL_FACE,
-    DLIB_OPT_LEFT_EAR,
-    DLIB_OPT_LEFT_EYE,
-    DLIB_OPT_LEFT_EYEBROW,
-    DLIB_OPT_LOWER_LIP,
-    DLIB_OPT_MOUTH,
-    DLIB_OPT_MOUTH_AND_NOSE,
-    DLIB_OPT_NOSE,
-    DLIB_OPT_RIGHT_EAR,
-    DLIB_OPT_RIGHT_EYE,
-    DLIB_OPT_RIGHT_EYEBROW,
-    DLIB_OPT_UPPER_LIP,
-)
+from util._telegram import send_simple_message
 
 __DISTANCES_DLIB_PATH = Path("fr", "distances_dlib.json")
 __DISTANCES_DLIB_FACEPARTS_PATH = Path("fr", "distances_dlib_faceparts.json")

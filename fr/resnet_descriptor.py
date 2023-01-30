@@ -7,12 +7,12 @@ from time import time
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-from dataset import DATASET_KIND_ALIGNED, get_file_path
 from PIL import Image
-from util._telegram import send_simple_message
 
+from dataset import DATASET_KIND_ALIGNED, get_file_path
 from fr.face_decomposition import (
     decompose_face,
+    decompose_face_no_blank,
     get_ears,
     get_eyebrows,
     get_eyes,
@@ -32,11 +32,16 @@ from fr.face_decomposition import (
     get_rigth_eyebrow,
     get_upper_lip,
 )
+from util._telegram import send_simple_message
 
 __DISTANCES_RESNET_PATH = Path("fr", "distances_resnet.json")
 __RESNET_DATA_PATH = Path("fr", "resnet_data.json")
 __DISTANCES_TF_RESNET_FACEPARTS_PATH = Path("fr", "distances_resnet_faceparts.json")
 __RESNET_FACEPARTS_DATA_PATH = Path("fr", "resnet_faceparts_data.json")
+__DISTANCES_TF_RESNET_FACEPARTS_NB_PATH = Path(
+    "fr", "distances_resnet_faceparts_nb.json"
+)
+__RESNET_FACEPARTS_NB_DATA_PATH = Path("fr", "resnet_faceparts_data_nb.json")
 
 __MODEL_URL = "https://tfhub.dev/google/imagenet/resnet_v2_50/feature_vector/5"
 
@@ -64,28 +69,33 @@ def calc_features(img_name: str) -> list:
     return features.numpy().tolist()
 
 
-def calc_facepart_features(img_name: str) -> dict:
-    tmp_face_parts = decompose_face(img_name)
+def calc_facepart_features(img_name: str, no_blank=False) -> dict:
+    if no_blank:
+        tmp_face_parts = decompose_face_no_blank(img_name)
+    else:
+        tmp_face_parts = decompose_face(img_name)
 
     face_parts = {
-        "resnet_ears": get_ears(tmp_face_parts),
-        "resnet_eyebrows": get_eyebrows(tmp_face_parts),
-        "resnet_eyes": get_eyes(tmp_face_parts),
-        "resnet_eyes_and_eyebrows": get_eyes_and_eyebrows(tmp_face_parts),
-        "resnet_eyes_and_nose": get_eyes_and_nose(tmp_face_parts),
-        "resnet_face": get_face(tmp_face_parts),
-        "resnet_full_face": get_full_face(tmp_face_parts),
-        "resnet_left_ear": get_left_ear(tmp_face_parts),
-        "resnet_left_eye": get_left_eye(tmp_face_parts),
-        "resnet_left_eyebrow": get_left_eyebrow(tmp_face_parts),
-        "resnet_lower_lip": get_lower_lip(tmp_face_parts),
-        "resnet_mouth": get_mouth(tmp_face_parts),
-        "resnet_mouth_and_nose": get_mouth_and_nose(tmp_face_parts),
-        "resnet_nose": get_nose(tmp_face_parts),
-        "resnet_right_ear": get_right_ear(tmp_face_parts),
-        "resnet_right_eye": get_right_eye(tmp_face_parts),
-        "resnet_rigth_eyebrow": get_rigth_eyebrow(tmp_face_parts),
-        "resnet_upper_lip": get_upper_lip(tmp_face_parts),
+        "resnet_ears": get_ears(tmp_face_parts, no_blank=no_blank),
+        "resnet_eyebrows": get_eyebrows(tmp_face_parts, no_blank=no_blank),
+        "resnet_eyes": get_eyes(tmp_face_parts, no_blank=no_blank),
+        "resnet_eyes_and_eyebrows": get_eyes_and_eyebrows(
+            tmp_face_parts, no_blank=no_blank
+        ),
+        "resnet_eyes_and_nose": get_eyes_and_nose(tmp_face_parts, no_blank=no_blank),
+        "resnet_face": get_face(tmp_face_parts, no_blank=no_blank),
+        "resnet_full_face": get_full_face(tmp_face_parts, no_blank=no_blank),
+        "resnet_left_ear": get_left_ear(tmp_face_parts, no_blank=no_blank),
+        "resnet_left_eye": get_left_eye(tmp_face_parts, no_blank=no_blank),
+        "resnet_left_eyebrow": get_left_eyebrow(tmp_face_parts, no_blank=no_blank),
+        "resnet_lower_lip": get_lower_lip(tmp_face_parts, no_blank=no_blank),
+        "resnet_mouth": get_mouth(tmp_face_parts, no_blank=no_blank),
+        "resnet_mouth_and_nose": get_mouth_and_nose(tmp_face_parts, no_blank=no_blank),
+        "resnet_nose": get_nose(tmp_face_parts, no_blank=no_blank),
+        "resnet_right_ear": get_right_ear(tmp_face_parts, no_blank=no_blank),
+        "resnet_right_eye": get_right_eye(tmp_face_parts, no_blank=no_blank),
+        "resnet_rigth_eyebrow": get_rigth_eyebrow(tmp_face_parts, no_blank=no_blank),
+        "resnet_upper_lip": get_upper_lip(tmp_face_parts, no_blank=no_blank),
     }
 
     for facepart_key, img_data in face_parts.items():
@@ -241,9 +251,21 @@ def gen_resnet_distances(imgs_names: list):
     )
 
 
-def gen_resnet_faceparts_distances(imgs_names: list):
-    distances = get_json_dict(file_path=__DISTANCES_TF_RESNET_FACEPARTS_PATH)
-    resnet_data = get_json_dict(file_path=__RESNET_FACEPARTS_DATA_PATH)
+def gen_resnet_faceparts_distances(imgs_names: list, no_blank=False):
+    tmp_distances_file = (
+        __DISTANCES_TF_RESNET_FACEPARTS_PATH
+        if not no_blank
+        else __DISTANCES_TF_RESNET_FACEPARTS_NB_PATH
+    )
+    tmp_resnet_data_file = (
+        __RESNET_FACEPARTS_DATA_PATH
+        if not no_blank
+        else __RESNET_FACEPARTS_NB_DATA_PATH
+    )
+
+    distances = get_json_dict(file_path=tmp_distances_file)
+    resnet_data = get_json_dict(file_path=tmp_resnet_data_file)
+
     aligned_imgs_paths = [
         get_file_path(img_name, dataset_kind=DATASET_KIND_ALIGNED)
         for img_name in imgs_names
@@ -264,16 +286,20 @@ def gen_resnet_faceparts_distances(imgs_names: list):
 
             try:
                 # Calculate FacePart features using TF ResNET data for img1
-                img1_features = calc_facepart_features(img_name=name_1)
+                img1_features = calc_facepart_features(
+                    img_name=name_1, no_blank=no_blank
+                )
 
                 # Save ResNET features
                 resnet_data[name_1] = img1_features
 
                 resnet_data_changed = True
-                logging.info(f"ResNET Faceparts data calculated for {name_1}")
+                logging.info(
+                    f"ResNET Faceparts data calculated for {name_1} | no_blank={no_blank}"
+                )
             except FileNotFoundError:
                 logging.error(
-                    f"Error calculating ResNET facepart features for {name_1}"
+                    f"Error calculating ResNET facepart features for {name_1} | no_blank={no_blank}"
                 )
                 logging.error(traceback.format_exc())
                 continue
@@ -299,16 +325,20 @@ def gen_resnet_faceparts_distances(imgs_names: list):
                 if img2_features is None:
                     try:
                         # Calculate FacePart features using TF ResNET data for img2
-                        img2_features = calc_facepart_features(img_name=name_2)
+                        img2_features = calc_facepart_features(
+                            img_name=name_2, no_blank=no_blank
+                        )
 
                         # Save TF ResNET features
                         resnet_data[name_2] = img2_features
 
                         resnet_data_changed = True
-                        logging.info(f"ResNET Faceparts data calculated for {name_2}")
+                        logging.info(
+                            f"ResNET Faceparts data calculated for {name_2} | no_blank={no_blank}"
+                        )
                     except FileNotFoundError:
                         logging.error(
-                            f"Error calculating facepart features for {name_2}"
+                            f"Error calculating facepart features for {name_2} | no_blank={no_blank}"
                         )
                         logging.error(traceback.format_exc())
                         continue
@@ -327,42 +357,42 @@ def gen_resnet_faceparts_distances(imgs_names: list):
             end_loop_time = time()
             if calculated_distances % 3e5 == 0:
                 send_simple_message(
-                    f"TF ResNET Faceparts Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
+                    f"TF ResNET Faceparts Distances calculation update (no_blank={no_blank}). {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
                 )
 
                 # Update results
                 update_json_dict(
                     new_dict_data=distances,
-                    file_path=__DISTANCES_TF_RESNET_FACEPARTS_PATH,
+                    file_path=tmp_distances_file,
                 )
 
                 # Update TF ResNET Faceparts Tmp data if needed
                 if resnet_data_changed:
-                    logging.info("Updating ResNET Faceparts Data.")
+                    logging.info(
+                        f"Updating ResNET Faceparts Data. (no_blank={no_blank})"
+                    )
                     update_json_dict(
                         new_dict_data=resnet_data,
-                        file_path=__RESNET_FACEPARTS_DATA_PATH,
+                        file_path=tmp_resnet_data_file,
                     )
                     resnet_data_changed = False
 
         # Inform state
         logging.info(
-            f"ResNET Faceparts Distances calculation done for {name_1}. Total time: {int(time() - start_time)} s"
+            f"ResNET Faceparts Distances calculation done for {name_1} (no_blank={no_blank}). Total time: {int(time() - start_time)} s"
         )
         logging.info(
-            f"ResNET Faceparts Distances calculation update. {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
+            f"ResNET Faceparts Distances calculation update (no_blank={no_blank}). {calculated_distances}/{total_distances} -- {round((calculated_distances/total_distances)*100, 2)}% | Total time: {int(time() - start_time)} s | Last loop time: {round(end_loop_time - start_loop_time, 4)} s"
         )
 
     # Save final results
-    update_json_dict(
-        new_dict_data=distances, file_path=__DISTANCES_TF_RESNET_FACEPARTS_PATH
-    )
-    update_json_dict(new_dict_data=resnet_data, file_path=__RESNET_FACEPARTS_DATA_PATH)
+    update_json_dict(new_dict_data=distances, file_path=tmp_distances_file)
+    update_json_dict(new_dict_data=resnet_data, file_path=tmp_resnet_data_file)
 
     # Final messages
     logging.info(
-        f"ResNET Faceparts Distances calculation done. Total time: {int(time() - start_time)} s"
+        f"ResNET Faceparts Distances calculation done (no_blank={no_blank}). Total time: {int(time() - start_time)} s"
     )
     send_simple_message(
-        f"ResNET Faceparts Distances calculation done. Total time: {int(time() - start_time)} s"
+        f"ResNET Faceparts Distances calculation done (no_blank={no_blank}). Total time: {int(time() - start_time)} s"
     )
