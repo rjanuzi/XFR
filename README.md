@@ -1,25 +1,33 @@
-## Face Recognition Attacks Experiments
-![Python 3.6.8](https://img.shields.io/badge/python-3.6.8-green.svg?style=plastic)
-![TensorFlow 1.14](https://img.shields.io/badge/tensorflow-1.14-green.svg?style=plastic)
-![cuDNN 7.6.0](https://img.shields.io/badge/cudnn-7.6.0-green.svg?style=plastic)
+## Explanable Face Recognition
+![Python 3.9.12](https://img.shields.io/badge/python-3.9.12-green.svg?style=plastic)
+![TensorFlow 2.6.0](https://img.shields.io/badge/tensorflow-2.6-green.svg?style=plastic)
+![Anaconda 4.12.0](https://img.shields.io/badge/anaconda-4.12-green.svg?style=plastic)
 ![License CC BY-NC](https://img.shields.io/badge/license-CC_BY--NC-green.svg?style=plastic)
 
-# Windows Configuration
-CUDA...
-cuDNN...
-nvcc...
+# Experiments
+
+## Data Set Preparation
+
+In order to prepare the dataset of images for the experiments, we need to align the faces in the imagens, crop to a squared size and ensure file type.
+
+To accomplish this, the script run_align.py can be used. All tje imagens with faces shall be placed in the same folder and the script will lookup for all the images, align the face in the center (when possible) and save the aligned image in the destination folder.
+
+The module "dataset" provide constants and function to help to map folders for different kind of images for the experiments like "raw_images", "aligned_images", "segmentation_maps", etc.
+
+The simplest way is to add all the raw imagens (with faces) into the "dataset/raw_images" folder and run the script to align the faces.
+
+## Face Segmentation
+
 ...
 
-# Generating Samples with StyleGAN2 (https://github.com/NVlabs/stylegan2)
+## Distance Matrix Generation
+
 ...
 
-# Pre-trained Model
+## GA Experiments
+
 ...
 
-# Face Recognition Attacks
+## GP Experiments
+
 ...
-
-# Attacks Dataset
-https://drive.google.com/drive/folders/1ZMO5cv55riHH2VV5kwjnw2cp0MJ2Tz98?usp=sharing
-
-....
