@@ -45,7 +45,9 @@ def decompose_face(img_name: str) -> dict:
     return face_parts
 
 
-def decompose_face_no_blank(img_name: str, target_shape=(128, 128)) -> dict:
+def decompose_face_no_blank(
+    img_name: str, target_shape: tuple[int, int] = (128, 128)
+) -> dict:
     """
     Decompose the face into its parts, but without adding blank space to the image.
 
@@ -186,17 +188,20 @@ def get_right_eye(face_parts: dict, use_hog_proportion=False, no_blank=False):
 
 def get_eyes(face_parts: dict, use_hog_proportion=False, no_blank=False):
     try:
-        left_eye = face_parts[__LEFT_EYE_CLASS]
-        right_eye = face_parts[__RIGHT_EYE_CLASS]
 
-        mixed = left_eye + right_eye
+        if not no_blank:
+            left_eye = face_parts[__LEFT_EYE_CLASS]
+            right_eye = face_parts[__RIGHT_EYE_CLASS]
 
-        if no_blank:
-            tmp_img = Image.fromarray(mixed)
-            tmp_img = tmp_img.resize(size=left_eye.shape[:2])
-            return np.array(tmp_img)
+            mixed = left_eye + right_eye
 
-        return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+            return crop_roi(img_array=mixed, use_hog_proportion=use_hog_proportion)
+        else:
+            # TODO
+            # tmp_img = Image.fromarray(mixed)
+            # tmp_img = tmp_img.resize(size=left_eye.shape[:2])
+            # return np.array(tmp_img)
+            return None
     except Exception:
         return None
 

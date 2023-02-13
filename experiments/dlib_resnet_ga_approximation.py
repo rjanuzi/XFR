@@ -13,24 +13,42 @@ from deap import base, creator, tools
 
 from util._telegram import send_simple_message
 
+# TODO - Configure to use (or not) blank background in reset parts
+# RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
+RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts_nb.json")
+
+# TODO When not using blank background, we need to ignore more combinations
+# RESNET_COLS_TO_IGNORE = [
+#     "resnet_left_ear",
+#     "resnet_right_ear",
+#     "resnet_ears",
+#     "resnet_full_face",
+# ]
+
 RESNET_COLS_TO_IGNORE = [
+    "resnet_face",
+    "resnet_eyes",
+    "resnet_eyebrows",
     "resnet_left_ear",
     "resnet_right_ear",
     "resnet_ears",
+    "resnet_upper_lip",
+    "resnet_mouth",
+    "resnet_mouth_and_nose",
+    "resnet_eyes_and_eyebrows",
+    "resnet_eyes_and_nose",
     "resnet_full_face",
 ]
 
 DLIB_DISTANCES_FILE = Path("fr", "distances_dlib.json")
-RESNET_DISTANCES_FILE = Path("fr", "distances_resnet.json")
-RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
 DLIB_DATASET_CLUSTERS_FILE = Path("fr", "dlib_clusters.json")
 
 RESULTS_FOLDER = Path(
-    "experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}_results"
+    "experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}_results_nb"
 )
 RESULTS_FOLDER.mkdir(exist_ok=True)
 
-RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments.csv")
+RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments_nb.csv")
 
 # Experiments params
 
@@ -75,6 +93,7 @@ def load_dlib_df_distances() -> pd.DataFrame:
             yield distances
 
     tmp_raw_data = json.load(open(RESNET_FACEPARTS_DISTANCES_FILE, "r"))
+
     generator = rows_generator(tmp_raw_data)
     del tmp_raw_data
 
