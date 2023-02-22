@@ -466,7 +466,7 @@ def run_experiment():
             # Normalize numerical columns
             for col in resnet_cols + ["dlib_distance"]:
                 cluster_norm_distances[col] = (
-                    cluster_norm_distances[col] - cluster_norm_distances[col].min()resnet_distances_norm
+                    cluster_norm_distances[col] - cluster_norm_distances[col].min()
                 ) / (
                     cluster_norm_distances[col].max()
                     - cluster_norm_distances[col].min()
