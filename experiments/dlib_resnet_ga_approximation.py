@@ -175,7 +175,7 @@ resnet_cols = list(
 IND_SIZE = len(resnet_cols)
 
 # Fitness Function
-def rank_error(individual, cluster_distances, resnet_distances_norm):
+def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
     """
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
     """
@@ -186,21 +186,21 @@ def rank_error(individual, cluster_distances, resnet_distances_norm):
 
     individual = [i / individual_sum for i in individual]
 
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
-    cluster_distances.sort_values(
+    cluster_norm_distances.sort_values(
         by="dlib_distance", inplace=True, ascending=True, ignore_index=True
     )
-    by_comb_distances = cluster_distances.sort_values(
+    by_comb_distances = cluster_norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = list(cluster_distances.img1.unique())
+    imgs = list(cluster_norm_distances.img1.unique())
     shuffle(imgs)
     corrs = []
     for img in imgs[:RANK_ERROR_IMGS_LIMIT]:
-        dlib_img_distances = cluster_distances[
-            cluster_distances.img1 == img
+        dlib_img_distances = cluster_norm_distances[
+            cluster_norm_distances.img1 == img
         ].reset_index(drop=True)
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
@@ -218,7 +218,7 @@ def rank_error(individual, cluster_distances, resnet_distances_norm):
     )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
 
 
-def mse(individual, cluster_distances, resnet_distances_norm):
+def mse(individual, cluster_norm_distances, resnet_distances_norm):
     """
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
     """
@@ -229,20 +229,22 @@ def mse(individual, cluster_distances, resnet_distances_norm):
 
     individual = [i / individual_sum for i in individual]
 
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
-    cluster_distances.loc[:, "error"] = (
-        cluster_distances.combination - cluster_distances.dlib_distance
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "error"] = (
+        cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
     )
-    cluster_distances.loc[:, "sqr_error"] = (
-        cluster_distances.error.abs() + 1
+    cluster_norm_distances.loc[:, "sqr_error"] = (
+        cluster_norm_distances.error.abs() + 1
     ) ** 2  # Avoid squared of fractions
 
     return (
-        cluster_distances[cluster_distances.sqr_error != inf].sqr_error.mean(),
+        cluster_norm_distances[
+            cluster_norm_distances.sqr_error != inf
+        ].sqr_error.mean(),
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def mae(individual, cluster_distances, resnet_distances_norm):
+def mae(individual, cluster_norm_distances, resnet_distances_norm):
     """
     Calculate the Mean Absolute Error (MAE) of the individual as a measure of fitness
     """
@@ -254,17 +256,17 @@ def mae(individual, cluster_distances, resnet_distances_norm):
 
     individual = [i / individual_sum for i in individual]
 
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
-    cluster_distances.loc[:, "error"] = (
-        cluster_distances.combination - cluster_distances.dlib_distance
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "error"] = (
+        cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
     )
 
     return (
-        cluster_distances[cluster_distances.error != inf].error.abs().mean(),
+        cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().mean(),
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def abs_error(individual, cluster_distances, resnet_distances_norm):
+def abs_error(individual, cluster_norm_distances, resnet_distances_norm):
     """
     Calculate the Absolute Error Sum of the individual as a measure of fitness
     """
@@ -276,17 +278,17 @@ def abs_error(individual, cluster_distances, resnet_distances_norm):
 
     individual = [i / individual_sum for i in individual]
 
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
-    cluster_distances.loc[:, "error"] = (
-        cluster_distances.combination - cluster_distances.dlib_distance
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "error"] = (
+        cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
     )
 
     return (
-        cluster_distances[cluster_distances.error != inf].error.abs().sum(),
+        cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().sum(),
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def step_error(individual, cluster_distances, resnet_distances_norm):
+def step_error(individual, cluster_norm_distances, resnet_distances_norm):
     """
     Calculate the Step differente of the individual as a measure of fitness
     """
@@ -298,21 +300,22 @@ def step_error(individual, cluster_distances, resnet_distances_norm):
 
     individual = [(i / individual_sum) for i in individual]
 
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
     # Pandas Like Error
-    cluster_distances.loc[
+    cluster_norm_distances.loc[
         :, "dlib_same_person"
-    ] = cluster_distances.dlib_distance.apply(lambda c: 1 if c < 0.37 else 0)
-    cluster_distances.loc[:, "comb_same_person"] = cluster_distances.combination.apply(
-        lambda c: 1 if c < 0.37 else 0
-    )
-    cluster_distances.loc[:, "error"] = (
-        cluster_distances.comb_same_person - cluster_distances.dlib_same_person
+    ] = cluster_norm_distances.dlib_distance.apply(lambda c: 1 if c < 0.37 else 0)
+    cluster_norm_distances.loc[
+        :, "comb_same_person"
+    ] = cluster_norm_distances.combination.apply(lambda c: 1 if c < 0.37 else 0)
+    cluster_norm_distances.loc[:, "error"] = (
+        cluster_norm_distances.comb_same_person
+        - cluster_norm_distances.dlib_same_person
     )
 
     return (
-        cluster_distances[cluster_distances.error != inf].error.abs().sum(),
+        cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().sum(),
     )  # Shall return a tuple for compatibility with DEAP
 
 
@@ -326,21 +329,21 @@ ERROR_FUNCTIONS = {
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
 
-def calc_rank(individual, cluster_distances, resnet_distances_norm):
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+def calc_rank(individual, cluster_norm_distances, resnet_distances_norm):
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
-    cluster_distances.sort_values(
+    cluster_norm_distances.sort_values(
         by="dlib_distance", inplace=True, ascending=True, ignore_index=True
     )
-    by_comb_distances = cluster_distances.sort_values(
+    by_comb_distances = cluster_norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = cluster_distances.img1.unique()
+    imgs = cluster_norm_distances.img1.unique()
     corrs = []
     for img in imgs:
-        dlib_img_distances = cluster_distances[
-            cluster_distances.img1 == img
+        dlib_img_distances = cluster_norm_distances[
+            cluster_norm_distances.img1 == img
         ].reset_index(drop=True)
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
@@ -357,22 +360,22 @@ def calc_rank(individual, cluster_distances, resnet_distances_norm):
 
 
 def gen_imgs_ranks(
-    individual, cluster_distances, resnet_distances_norm
+    individual, cluster_norm_distances, resnet_distances_norm
 ) -> pd.DataFrame:
-    cluster_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
-    cluster_distances.sort_values(
+    cluster_norm_distances.sort_values(
         by="dlib_distance", inplace=True, ascending=True, ignore_index=True
     )
-    by_comb_distances = cluster_distances.sort_values(
+    by_comb_distances = cluster_norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = cluster_distances.img1.unique()
+    imgs = cluster_norm_distances.img1.unique()
     corrs = []
     for img in imgs:
-        dlib_img_distances = cluster_distances[
-            cluster_distances.img1 == img
+        dlib_img_distances = cluster_norm_distances[
+            cluster_norm_distances.img1 == img
         ].reset_index(drop=True)
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
@@ -443,7 +446,7 @@ def run_experiment():
             cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE]
 
             total_pairs = len(cluster_distances)
-            total_persons = len(cluster_distances.person1.unique())
+            total_persons = cluster_distances.person1.shape[0]
             print(
                 f"""
                     Experiment {exp_id} with {total_pairs} pairs of images of {total_persons} persons
@@ -458,15 +461,15 @@ def run_experiment():
             )
 
             # Normalize distances inside cluster
-            norm_distances = cluster_distances.loc[
+            cluster_norm_distances = cluster_distances.loc[
                 :, resnet_cols + ["dlib_distance"]
             ]  # Get numerical columns to normalize
-            for col in norm_distances.columns:
-                norm_distances[col] = (
-                    norm_distances[col] - norm_distances[col].min()
-                ) / (norm_distances[col].max() - norm_distances[col].min())
+            for col in cluster_norm_distances.columns:
+                cluster_norm_distances[col] = (
+                    cluster_norm_distances[col] - cluster_norm_distances[col].min()
+                ) / (cluster_norm_distances[col].max() - cluster_norm_distances[col].min())
 
-            resnet_distances_norm = norm_distances.loc[:, resnet_cols]
+            resnet_distances_norm = cluster_norm_distances.loc[:, resnet_cols]
 
             # Prepare DEAP
             toolbox = base.Toolbox()
@@ -482,7 +485,7 @@ def run_experiment():
             toolbox.register(
                 "evaluate",
                 current_error_fun,
-                cluster_distances=cluster_distances,
+                cluster_norm_distances=cluster_norm_distances,
                 resnet_distances_norm=resnet_distances_norm,
             )
             toolbox.register("mate", tools.cxTwoPoint)
@@ -609,12 +612,10 @@ def run_experiment():
             json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
             json.dump(bests, open(best_individuals_file, "w"))
             min_rank, max_rank, median_rank, mean_rank = calc_rank(
-                best, cluster_distances, resnet_distances_norm
+                best, cluster_norm_distances, resnet_distances_norm
             )
 
-            tmp_imgs_ranks = gen_imgs_ranks(
-                best, cluster_distances, resnet_distances_norm
-            )
+            tmp_imgs_ranks = gen_imgs_ranks(best, cluster_norm_distances, resnet_distances_norm)
             tmp_imgs_ranks.to_csv(best_individuals_imgs_ranks_file, index=False)
 
             with open(RESULTS_FILE, "a") as f:
