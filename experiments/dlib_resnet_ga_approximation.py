@@ -461,13 +461,16 @@ def run_experiment():
             )
 
             # Normalize distances inside cluster
-            cluster_norm_distances = cluster_distances.loc[
-                :, resnet_cols + ["dlib_distance"]
-            ]  # Get numerical columns to normalize
-            for col in cluster_norm_distances.columns:
+            cluster_norm_distances = cluster_distances.copy()
+
+            # Normalize numerical columns
+            for col in resnet_cols + ["dlib_distance"]:
                 cluster_norm_distances[col] = (
-                    cluster_norm_distances[col] - cluster_norm_distances[col].min()
-                ) / (cluster_norm_distances[col].max() - cluster_norm_distances[col].min())
+                    cluster_norm_distances[col] - cluster_norm_distances[col].min()resnet_distances_norm
+                ) / (
+                    cluster_norm_distances[col].max()
+                    - cluster_norm_distances[col].min()
+                )
 
             resnet_distances_norm = cluster_norm_distances.loc[:, resnet_cols]
 
@@ -615,7 +618,9 @@ def run_experiment():
                 best, cluster_norm_distances, resnet_distances_norm
             )
 
-            tmp_imgs_ranks = gen_imgs_ranks(best, cluster_norm_distances, resnet_distances_norm)
+            tmp_imgs_ranks = gen_imgs_ranks(
+                best, cluster_norm_distances, resnet_distances_norm
+            )
             tmp_imgs_ranks.to_csv(best_individuals_imgs_ranks_file, index=False)
 
             with open(RESULTS_FILE, "a") as f:
