@@ -156,23 +156,24 @@ def load_dlib_df_distances() -> pd.DataFrame:
 # Run the experiments
 # ======================================================================================================
 
-distances = load_dlib_df_distances()
-clusters = set(distances.img1_cluster.unique()).union(
-    set(distances.img2_cluster.unique())
-)
-clusters = sorted(clusters)
-
-print("Distances data loaded")
-
-# Individuals representation
-resnet_cols = list(
-    filter(
-        lambda c: ("resnet" in c) and (c not in RESNET_COLS_TO_IGNORE),
-        distances.columns,
+if __name__ == "__main__":
+    distances = load_dlib_df_distances()
+    clusters = set(distances.img1_cluster.unique()).union(
+        set(distances.img2_cluster.unique())
     )
-)
+    clusters = sorted(clusters)
 
-IND_SIZE = len(resnet_cols)
+    print("Distances data loaded")
+
+    # Individuals representation
+    resnet_cols = list(
+        filter(
+            lambda c: ("resnet" in c) and (c not in RESNET_COLS_TO_IGNORE),
+            distances.columns,
+        )
+    )
+
+    IND_SIZE = len(resnet_cols)
 
 # Fitness Function
 def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
@@ -186,21 +187,28 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
 
     individual = [i / individual_sum for i in individual]
 
-    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    # Remove equal images
+    norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
 
-    cluster_norm_distances.sort_values(
-        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    # Calculate the Distance with the ResNet Combination
+    norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+
+    # Sort by the Dlib Distance and the Combination Distance
+    by_dlib_distances = norm_distances.sort_values(
+        by="dlib_distance", ascending=True, ignore_index=True
     )
-    by_comb_distances = cluster_norm_distances.sort_values(
+    by_comb_distances = norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = list(cluster_norm_distances.img1.unique())
+    imgs = list(by_dlib_distances.img1.unique())
     shuffle(imgs)
     corrs = []
     for img in imgs[:RANK_ERROR_IMGS_LIMIT]:
-        dlib_img_distances = cluster_norm_distances[
-            cluster_norm_distances.img1 == img
+        dlib_img_distances = by_dlib_distances[
+            by_dlib_distances.img1 == img
         ].reset_index(drop=True)
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
@@ -329,21 +337,39 @@ ERROR_FUNCTIONS = {
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
 
-def calc_rank(individual, cluster_norm_distances, resnet_distances_norm):
-    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+def calc_rank(
+    individual,
+    cluster_norm_distances,
+    resnet_distances_norm,
+    save_data=False,
+    files_prepend="",
+):
+    # Remove equal images
+    norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
 
-    cluster_norm_distances.sort_values(
-        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    # Calculate the Distance with the ResNet Combination
+    norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+
+    # Sort by the Dlib Distance and the Combination Distance
+    by_dlib_distances = norm_distances.sort_values(
+        by="dlib_distance", ascending=True, ignore_index=True
     )
-    by_comb_distances = cluster_norm_distances.sort_values(
+    by_comb_distances = norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = cluster_norm_distances.img1.unique()
+    if save_data:
+        by_dlib_distances.to_excel(files_prepend + "distances.xlsx")
+
+    imgs = by_dlib_distances.img1.unique()
     corrs = []
+    corrs_by_img = []
+
     for img in imgs:
-        dlib_img_distances = cluster_norm_distances[
-            cluster_norm_distances.img1 == img
+        dlib_img_distances = by_dlib_distances[
+            by_dlib_distances.img1 == img
         ].reset_index(drop=True)
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
@@ -356,7 +382,18 @@ def calc_rank(individual, cluster_norm_distances, resnet_distances_norm):
         if not np.isnan(tmp_corr):
             corrs.append(tmp_corr)
 
-    return min(corrs), max(corrs), np.median(corrs), np.mean(corrs)
+        if save_data:
+            corrs_by_img.append(
+                {
+                    "img": img,
+                    "corr": tmp_corr,
+                }
+            )
+
+    if save_data:
+        pd.DataFrame(corrs_by_img).to_excel(files_prepend+"corrs.xlsx")
+
+    return np.min(corrs), np.max(corrs), np.median(corrs), np.mean(corrs)
 
 
 def gen_imgs_ranks(
