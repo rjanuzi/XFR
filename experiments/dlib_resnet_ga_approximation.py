@@ -1,6 +1,7 @@
 # Face Recognition (FR) - DLIB ResNET Approximation with Genetic Algorithm
 
 import json
+import pickle
 from datetime import datetime
 from math import inf
 from pathlib import Path
@@ -10,12 +11,14 @@ from time import time
 import numpy as np
 import pandas as pd
 from deap import base, creator, tools
+from scipy import stats
 
 from util._telegram import send_simple_message
 
 # TODO - Configure to use (or not) blank background in reset parts
 # RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
 RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts_nb.json")
+DISTANCES_FILES_PKL = Path("fr", "distances.pickle")
 
 # TODO When not using blank background, we need to ignore more combinations
 # RESNET_COLS_TO_IGNORE = [
@@ -67,113 +70,107 @@ MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
 
-RANK_ERROR_IMGS_LIMIT = 10
+RANK_ERROR_IMGS_LIMIT = 100
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
-    print("Loading DLIB distances...")
-    # Load distances from raw files into dataframes
+    # Try to load the pre-processed distances from pickle file
+    try:
+        print("Loading DLIB distances from pickle file...")
+        distances = pickle.load(open(DISTANCES_FILES_PKL, "rb"))
+    except:
+        # Load distances from raw files into dataframes
+        # DLIB Distances ( <pair>: {'dlib': distance}} )
+        print("No distances pickle file found. Loading DLIB Raw distances data...")
+        tmp_raw_data = json.load(open(DLIB_DISTANCES_FILE, "r"))
 
-    # DLIB Distances ( <pair>: {'dlib': distance}} )
-    tmp_raw_data = json.load(open(DLIB_DISTANCES_FILE, "r"))
-    dlib_distances = pd.DataFrame(
-        dict(
-            pair=tmp_raw_data.keys(),
-            dlib_distance=(d["dlib"] for d in tmp_raw_data.values()),
+        dlib_distances = pd.DataFrame(
+            dict(
+                pair=tmp_raw_data.keys(),
+                dlib_distance=(d["dlib"] for d in tmp_raw_data.values()),
+            )
         )
-    )
-    del tmp_raw_data
+        del tmp_raw_data
 
-    print("DLIB raw data loaded")
+        # ResNET Faceparts Distances
+        def rows_generator(resnet_faceparts_raw_data):
+            for pair, distances in resnet_faceparts_raw_data.items():
+                distances.update({"pair": pair})
+                yield distances
 
-    # ResNET Faceparts Distances
-    def rows_generator(resnet_faceparts_raw_data):
-        for pair, distances in resnet_faceparts_raw_data.items():
-            distances.update({"pair": pair})
-            yield distances
+        print("Loading ResNET Faceparts distances from json file...")
+        tmp_raw_data = json.load(open(RESNET_FACEPARTS_DISTANCES_FILE, "r"))
 
-    tmp_raw_data = json.load(open(RESNET_FACEPARTS_DISTANCES_FILE, "r"))
+        generator = rows_generator(tmp_raw_data)
+        del tmp_raw_data
 
-    generator = rows_generator(tmp_raw_data)
-    del tmp_raw_data
+        resnet_faceparts_distances = pd.DataFrame(generator)
 
-    resnet_faceparts_distances = pd.DataFrame(generator)
+        print("ResNET Faceparts raw data loaded")
 
-    print("ResNET Faceparts raw data loaded")
+        # Join distances into a sigle dataframe
+        distances = dlib_distances.merge(
+            resnet_faceparts_distances, on="pair", how="outer"
+        )
 
-    # Join distances into a sigle dataframe
-    distances = dlib_distances.merge(resnet_faceparts_distances, on="pair", how="outer")
+        del dlib_distances
+        del resnet_faceparts_distances
 
-    del dlib_distances
-    del resnet_faceparts_distances
+        print("DLIB and ResNET Faceparts distances joined")
 
-    print("DLIB and ResNET Faceparts distances joined")
+        # Filter only images with "n" (from VGGFACE2)
+        distances = distances[distances.pair.apply(lambda p: "n" in p)]
 
-    # Filter only images with "n" (from VGGFACE2)
-    distances = distances[distances.pair.apply(lambda p: "n" in p)]
+        # Generate extra columns
+        distances["img1"] = distances.pair.apply(lambda p: p.split(" x ")[0])
+        distances["img2"] = distances.pair.apply(lambda p: p.split(" x ")[1])
+        distances["person1"] = distances.img1.apply(lambda p: p.split("_")[0])
+        distances["person2"] = distances.img2.apply(lambda p: p.split("_")[0])
+        distances["same_person"] = (distances.person1 == distances.person2).apply(
+            lambda s: "same" if s else "different"
+        )
 
-    # Generate extra columns
-    distances["img1"] = distances.pair.apply(lambda p: p.split(" x ")[0])
-    distances["img2"] = distances.pair.apply(lambda p: p.split(" x ")[1])
-    distances["person1"] = distances.img1.apply(lambda p: p.split("_")[0])
-    distances["person2"] = distances.img2.apply(lambda p: p.split("_")[0])
-    distances["same_person"] = (distances.person1 == distances.person2).apply(
-        lambda s: "same" if s else "different"
-    )
+        # Delete unnecessary columns
+        distances.drop(columns="pair", inplace=True)
 
-    # Delete unnecessary columns
-    distances.drop(columns="pair", inplace=True)
+        print("Distances extra columns generated")
 
-    print("Distances extra columns generated")
+        # Sort columns by name
+        distances = distances.reindex(sorted(distances.columns), axis=1)
 
-    # Sort columns by name
-    distances = distances.reindex(sorted(distances.columns), axis=1)
+        # Load clusters
+        clusters_ref = pd.DataFrame(
+            data=json.load(open(DLIB_DATASET_CLUSTERS_FILE, "r"))
+        )
+        clusters_ref.set_index("label", inplace=True)
 
-    # Load clusters
-    clusters_ref = pd.DataFrame(data=json.load(open(DLIB_DATASET_CLUSTERS_FILE, "r")))
-    clusters_ref.set_index("label", inplace=True)
+        distances["img1_cluster"] = distances.img1.apply(
+            lambda i: clusters_ref.cluster.get(i, None)
+        )
+        distances["img2_cluster"] = distances.img2.apply(
+            lambda i: clusters_ref.cluster.get(i, None)
+        )
 
-    distances["img1_cluster"] = distances.img1.apply(
-        lambda i: clusters_ref.cluster.get(i, None)
-    )
-    distances["img2_cluster"] = distances.img2.apply(
-        lambda i: clusters_ref.cluster.get(i, None)
-    )
+        del clusters_ref
 
-    del clusters_ref
+        print("Clusters data added")
 
-    print("Clusters data added")
+        distances = distances.replace(inf, np.nan)
+        distances.dropna(inplace=True)
 
-    distances = distances.replace(inf, np.nan)
-    distances.dropna(inplace=True)
+        distances = distances[
+            distances.img1 != distances.img2
+        ]  # Remove same image pairs
 
-    distances = distances[distances.img1 != distances.img2]  # Remove same image pairs
+        print("Saving distances to pickle file...")
+        pickle.dump(distances, open(DISTANCES_FILES_PKL, "wb"))
 
-    return distances.sort_values(by="dlib_distance", ascending=True)
+    return distances.round(6).reset_index(drop=True)
 
 
 # ======================================================================================================
 # Run the experiments
 # ======================================================================================================
-
-if __name__ == "__main__":
-    distances = load_dlib_df_distances()
-    clusters = set(distances.img1_cluster.unique()).union(
-        set(distances.img2_cluster.unique())
-    )
-    clusters = sorted(clusters)
-
-    print("Distances data loaded")
-
-    # Individuals representation
-    resnet_cols = list(
-        filter(
-            lambda c: ("resnet" in c) and (c not in RESNET_COLS_TO_IGNORE),
-            distances.columns,
-        )
-    )
-
-    IND_SIZE = len(resnet_cols)
 
 # Fitness Function
 def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
@@ -194,6 +191,7 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
 
     # Calculate the Distance with the ResNet Combination
     norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    norm_distances.combination = norm_distances.combination.round(6)
 
     # Sort by the Dlib Distance and the Combination Distance
     by_dlib_distances = norm_distances.sort_values(
@@ -219,10 +217,10 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
         )
 
         if not np.isnan(tmp_corr):
-            corrs.append(tmp_corr)
+            corrs.append(round(tmp_corr, 6))
 
     return (
-        np.mean(corrs) * -1,
+        round(np.mean(corrs)) * -1,
     )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
 
 
@@ -343,7 +341,12 @@ def calc_rank(
     resnet_distances_norm,
     save_data=False,
     files_prepend="",
+    output_files_folders=None,
+    use_scipy=False,
 ):
+    individual_sum = sum(individual)
+    individual = [i / individual_sum for i in individual]
+
     # Remove equal images
     norm_distances = cluster_norm_distances[
         cluster_norm_distances.img1 != cluster_norm_distances.img2
@@ -361,7 +364,13 @@ def calc_rank(
     )
 
     if save_data:
-        by_dlib_distances.to_excel(files_prepend + "distances.xlsx")
+        if output_files_folders is None:
+            by_dlib_distances.to_excel(files_prepend + "distances.xlsx")
+        else:
+            output_path = output_files_folders.joinpath(
+                files_prepend + "distances.xlsx"
+            )
+            by_dlib_distances.to_excel(output_path)
 
     imgs = by_dlib_distances.img1.unique()
     corrs = []
@@ -375,9 +384,14 @@ def calc_rank(
             by_comb_distances.img1 == img
         ].reset_index(drop=True)
 
-        tmp_corr = dlib_img_distances.img2.corr(
-            comb_img_distances.img2, method="kendall"
-        )
+        if use_scipy:
+            tmp_corr = stats.kendalltau(
+                x=dlib_img_distances.img2.tolist(), y=comb_img_distances.img2.tolist()
+            )
+        else:
+            tmp_corr = dlib_img_distances.img2.corr(
+                comb_img_distances.img2, method="kendall"
+            )
 
         if not np.isnan(tmp_corr):
             corrs.append(tmp_corr)
@@ -391,44 +405,34 @@ def calc_rank(
             )
 
     if save_data:
-        pd.DataFrame(corrs_by_img).to_excel(files_prepend+"corrs.xlsx")
+        if output_files_folders is None:
+            pd.DataFrame(corrs_by_img).to_excel(files_prepend + "corrs.xlsx")
+        else:
+            output_path = output_files_folders.joinpath(files_prepend + "corrs.xlsx")
+            pd.DataFrame(corrs_by_img).to_excel(output_path)
 
     return np.min(corrs), np.max(corrs), np.median(corrs), np.mean(corrs)
 
 
-def gen_imgs_ranks(
-    individual, cluster_norm_distances, resnet_distances_norm
-) -> pd.DataFrame:
-    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+def run_experiment(params_comb=None):
 
-    cluster_norm_distances.sort_values(
-        by="dlib_distance", inplace=True, ascending=True, ignore_index=True
+    distances = load_dlib_df_distances()
+    clusters = set(distances.img1_cluster.unique()).union(
+        set(distances.img2_cluster.unique())
     )
-    by_comb_distances = cluster_norm_distances.sort_values(
-        by="combination", ascending=True, ignore_index=True
-    )
+    clusters = sorted(clusters)
 
-    imgs = cluster_norm_distances.img1.unique()
-    corrs = []
-    for img in imgs:
-        dlib_img_distances = cluster_norm_distances[
-            cluster_norm_distances.img1 == img
-        ].reset_index(drop=True)
-        comb_img_distances = by_comb_distances[
-            by_comb_distances.img1 == img
-        ].reset_index(drop=True)
+    print("Distances data loaded")
 
-        tmp_corr = dlib_img_distances.img2.corr(
-            comb_img_distances.img2, method="kendall"
+    # Individuals representation
+    resnet_cols = list(
+        filter(
+            lambda c: ("resnet" in c) and (c not in RESNET_COLS_TO_IGNORE),
+            distances.columns,
         )
+    )
 
-        if not np.isnan(tmp_corr):
-            corrs.append({"img": img, "rank": tmp_corr})
-
-    return pd.DataFrame(corrs)
-
-
-def run_experiment():
+    IND_SIZE = len(resnet_cols)
 
     with open(RESULTS_FILE, "w") as f:
         f.write(
@@ -438,23 +442,33 @@ def run_experiment():
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
     creator.create("Individual", list, fitness=creator.FitnessMin)
 
-    def params_generator():
-        for max_generations in MAX_GENERATIONS:
-            for pop_size in POP_SIZE:
-                for indpb in INDPB:
-                    for mutpb in MUTPB:
-                        for cxpb in CXPB:
-                            for error_fun_name in ERROR_FUNCTIONS_NAMES:
-                                yield {
-                                    "cxpb": cxpb,
-                                    "mutpb": mutpb,
-                                    "indpb": indpb,
-                                    "pop_size": pop_size,
-                                    "max_generations": max_generations,
-                                    "error_fun": ERROR_FUNCTIONS[error_fun_name],
-                                }
+    # If no params is provided, use the available one by default
+    if params_comb is None:
 
-    params_comb = list(params_generator())
+        def params_generator():
+            for max_generations in MAX_GENERATIONS:
+                for pop_size in POP_SIZE:
+                    for indpb in INDPB:
+                        for mutpb in MUTPB:
+                            for cxpb in CXPB:
+                                for error_fun_name in ERROR_FUNCTIONS_NAMES:
+                                    yield {
+                                        "cxpb": cxpb,
+                                        "mutpb": mutpb,
+                                        "indpb": indpb,
+                                        "pop_size": pop_size,
+                                        "max_generations": max_generations,
+                                        "error_fun": ERROR_FUNCTIONS[error_fun_name],
+                                    }
+
+        params_comb = list(params_generator())
+    else:
+        params_comb = list(
+            map(
+                lambda p: {**p, "error_fun": ERROR_FUNCTIONS[p["error_fun"]]},
+                params_comb,
+            )
+        )
 
     send_simple_message(
         f"Starting DLIB ResNET GA Experiments with {len(params_comb)} combination of parameters"
@@ -480,10 +494,12 @@ def run_experiment():
                 & (distances.img2_cluster == cluster)
             ]
 
-            cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE]
+            cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE].reset_index(
+                drop=True
+            )
 
             total_pairs = len(cluster_distances)
-            total_persons = cluster_distances.person1.shape[0]
+            total_persons = cluster_distances.person1.unique().shape[0]
             print(
                 f"""
                     Experiment {exp_id} with {total_pairs} pairs of images of {total_persons} persons
@@ -499,6 +515,7 @@ def run_experiment():
 
             # Normalize distances inside cluster
             cluster_norm_distances = cluster_distances.copy()
+            cluster_norm_distances = cluster_norm_distances.round(6)
 
             # Normalize numerical columns
             for col in resnet_cols + ["dlib_distance"]:
@@ -509,6 +526,7 @@ def run_experiment():
                     - cluster_norm_distances[col].min()
                 )
 
+            cluster_norm_distances = cluster_norm_distances.round(6)
             resnet_distances_norm = cluster_norm_distances.loc[:, resnet_cols]
 
             # Prepare DEAP
@@ -556,9 +574,6 @@ def run_experiment():
             individuals_folder.mkdir(exist_ok=True)
             best_individual_file = individuals_folder.joinpath("best_individual.json")
             best_individuals_file = individuals_folder.joinpath("best_individuals.json")
-            best_individuals_imgs_ranks_file = individuals_folder.joinpath(
-                "imgs_ranks.csv"
-            )
 
             low_std_times = 0
             # last_max_fit = -1e9
@@ -652,13 +667,12 @@ def run_experiment():
             json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
             json.dump(bests, open(best_individuals_file, "w"))
             min_rank, max_rank, median_rank, mean_rank = calc_rank(
-                best, cluster_norm_distances, resnet_distances_norm
+                best,
+                cluster_norm_distances,
+                resnet_distances_norm,
+                save_data=True,
+                output_files_folders=individuals_folder,
             )
-
-            tmp_imgs_ranks = gen_imgs_ranks(
-                best, cluster_norm_distances, resnet_distances_norm
-            )
-            tmp_imgs_ranks.to_csv(best_individuals_imgs_ranks_file, index=False)
 
             with open(RESULTS_FILE, "a") as f:
                 tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"

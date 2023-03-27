@@ -1,9 +1,11 @@
 import json
+import sys
+from datetime import datetime
 from pathlib import Path
+
 import pandas as pd
 
 from experiments.dlib_resnet_ga_approximation import calc_rank
-import sys
 
 # Read params
 EXPERIMENT_ID = int(sys.argv[1])
@@ -11,7 +13,11 @@ CLUSTER_ID = int(sys.argv[2])
 try:
     EXPERIMENT_FOLDER_NAME = sys.argv[3]
 except:
-    EXPERIMENT_FOLDER_NAME = "20230222125053_results_nb"
+    EXPERIMENT_FOLDER_NAME = "20230316230459_results_nb"
+
+print(
+    f"Checking experiment {EXPERIMENT_ID} in folder {EXPERIMENT_FOLDER_NAME} for cluster {CLUSTER_ID}"
+)
 
 EXPERIMENT_ROOT_FOLDER = Path("experiments", EXPERIMENT_FOLDER_NAME)
 EXPERIMENTS_SUMMARY = EXPERIMENT_ROOT_FOLDER.joinpath("experiments_nb.csv")
@@ -157,13 +163,13 @@ def generate_results(distances, best_multipliers_lst, dlib_resnet_best_comb):
         cluster_norm_distances=distances,
         resnet_distances_norm=distances.loc[:, dlib_resnet_best_comb.resnet_part],
         save_data=True,
-        files_prepend=CHECK_RANK_PREPEND,
+        files_prepend=CHECK_RANK_PREPEND + datetime.now().strftime("%Y%m%d%H%M%S_"),
+        use_scipy=True,
     )
 
-    print(f"Min rank: {min_rank}")
-    print(f"Max rank: {max_rank}")
-    print(f"Median rank: {median_rank}")
-    print(f"Mean rank: {mean_rank}")
+    print(
+        f"Min rank: {min_rank:.4f} | Max rank: {max_rank:.4f} | Median rank: {median_rank:.4f} | Mean rank: {mean_rank:.4f}"
+    )
 
 
 if __name__ == "__main__":
@@ -172,5 +178,6 @@ if __name__ == "__main__":
     print("Done!\nPreparing resnet combination data...")
     best_multipliers_lst, dlib_resnet_best_comb = get_resnet_comb_data(distances)
     print("Done!\nGenerating results...")
-    generate_results(distances, best_multipliers_lst, dlib_resnet_best_comb)
+    for _ in range(10):
+        generate_results(distances, best_multipliers_lst, dlib_resnet_best_comb)
     print("Done!")

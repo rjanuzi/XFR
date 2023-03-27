@@ -2,3 +2,4 @@
 best_combination_runs/*.json
 best_combination_runs/*.ods
 best_combination_runs/*.pdf
+*.pickle
