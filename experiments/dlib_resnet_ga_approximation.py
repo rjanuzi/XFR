@@ -16,42 +16,45 @@ from scipy import stats
 from util._telegram import send_simple_message
 
 # TODO - Configure to use (or not) blank background in reset parts
-# RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
-RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts_nb.json")
+RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts.json")
+# RESNET_FACEPARTS_DISTANCES_FILE = Path("fr", "distances_resnet_faceparts_nb.json")
 DISTANCES_FILES_PKL = Path("fr", "distances.pickle")
 
 # TODO When not using blank background, we need to ignore more combinations
-# RESNET_COLS_TO_IGNORE = [
-#     "resnet_left_ear",
-#     "resnet_right_ear",
-#     "resnet_ears",
-#     "resnet_full_face",
-# ]
-
 RESNET_COLS_TO_IGNORE = [
-    "resnet_face",
-    "resnet_eyes",
-    "resnet_eyebrows",
     "resnet_left_ear",
     "resnet_right_ear",
     "resnet_ears",
-    "resnet_upper_lip",
-    "resnet_mouth",
-    "resnet_mouth_and_nose",
-    "resnet_eyes_and_eyebrows",
-    "resnet_eyes_and_nose",
     "resnet_full_face",
 ]
+
+# RESNET_COLS_TO_IGNORE = [
+#     "resnet_face",
+#     "resnet_eyes",
+#     "resnet_eyebrows",
+#     "resnet_left_ear",
+#     "resnet_right_ear",
+#     "resnet_ears",
+#     "resnet_upper_lip",
+#     "resnet_mouth",
+#     "resnet_mouth_and_nose",
+#     "resnet_eyes_and_eyebrows",
+#     "resnet_eyes_and_nose",
+#     "resnet_full_face",
+# ]
 
 DLIB_DISTANCES_FILE = Path("fr", "distances_dlib.json")
 DLIB_DATASET_CLUSTERS_FILE = Path("fr", "dlib_clusters.json")
 
-RESULTS_FOLDER = Path(
-    "experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}_results_nb"
-)
+# TODO When not usng blank background, we need to adjust the name of the experiments
+RESULTS_FOLDER = Path("experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}")
+# RESULTS_FOLDER = Path(
+#     "experiments", f"{datetime.now().strftime('%Y%m%d%H%M%S')}_results_nb"
+# )
 RESULTS_FOLDER.mkdir(exist_ok=True)
 
-RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments_nb.csv")
+RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments.csv")
+# RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments_nb.csv")
 
 # Experiments params
 
@@ -387,7 +390,7 @@ def calc_rank(
         if use_scipy:
             tmp_corr = stats.kendalltau(
                 x=dlib_img_distances.img2.tolist(), y=comb_img_distances.img2.tolist()
-            )
+            ).correlation
         else:
             tmp_corr = dlib_img_distances.img2.corr(
                 comb_img_distances.img2, method="kendall"
