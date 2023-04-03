@@ -59,16 +59,13 @@ RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments_nb.csv")
 # Experiments params
 
 # AG Search Params
-CXPB = [0.3, 0.4, 0.5]  # Probability with which two individuals are crossed
-MUTPB = [0.2, 0.3]  # Probability for mutating an individual
+CXPB = [0.3]  # Probability with which two individuals are crossed
+MUTPB = [0.2]  # Probability for mutating an individual
 INDPB = [
-    0.15,
     0.2,
-    0.25,
-    0.3,
 ]  # Probability for flipping a bit of an individual
-POP_SIZE = [100, 200, 400]  # Population size
-MAX_GENERATIONS = [50, 100, 200, 400, 800]  # Maximum number of generations
+POP_SIZE = [100, 200, 400, 800]  # Population size
+MAX_GENERATIONS = [50, 100, 200, 400, 800, 1000]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
@@ -176,7 +173,7 @@ def load_dlib_df_distances() -> pd.DataFrame:
 # ======================================================================================================
 
 # Fitness Function
-def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
+def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
     """
@@ -196,21 +193,17 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
     norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
     norm_distances.combination = norm_distances.combination.round(6)
 
-    # Sort by the Dlib Distance and the Combination Distance
-    by_dlib_distances = norm_distances.sort_values(
-        by="dlib_distance", ascending=True, ignore_index=True
-    )
+    # Sort by the Dlib Distance and the Combination Distance.
+    # The distances are sorted by dlib by default
     by_comb_distances = norm_distances.sort_values(
         by="combination", ascending=True, ignore_index=True
     )
 
-    imgs = list(by_dlib_distances.img1.unique())
-    shuffle(imgs)
     corrs = []
     for img in imgs[:RANK_ERROR_IMGS_LIMIT]:
-        dlib_img_distances = by_dlib_distances[
-            by_dlib_distances.img1 == img
-        ].reset_index(drop=True)
+        dlib_img_distances = norm_distances[norm_distances.img1 == img].reset_index(
+            drop=True
+        )
         comb_img_distances = by_comb_distances[
             by_comb_distances.img1 == img
         ].reset_index(drop=True)
@@ -227,7 +220,7 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm):
     )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
 
 
-def mse(individual, cluster_norm_distances, resnet_distances_norm):
+def mse(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     Calculate the Mean Squared Error (MSE) of the individual as a measure of fitness
     """
@@ -253,7 +246,7 @@ def mse(individual, cluster_norm_distances, resnet_distances_norm):
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def mae(individual, cluster_norm_distances, resnet_distances_norm):
+def mae(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     Calculate the Mean Absolute Error (MAE) of the individual as a measure of fitness
     """
@@ -275,7 +268,7 @@ def mae(individual, cluster_norm_distances, resnet_distances_norm):
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def abs_error(individual, cluster_norm_distances, resnet_distances_norm):
+def abs_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     Calculate the Absolute Error Sum of the individual as a measure of fitness
     """
@@ -297,7 +290,7 @@ def abs_error(individual, cluster_norm_distances, resnet_distances_norm):
     )  # Shall return a tuple for compatibility with DEAP
 
 
-def step_error(individual, cluster_norm_distances, resnet_distances_norm):
+def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     Calculate the Step differente of the individual as a measure of fitness
     """
@@ -530,7 +523,15 @@ def run_experiment(params_comb=None):
                 )
 
             cluster_norm_distances = cluster_norm_distances.round(6)
+            cluster_norm_distances = cluster_norm_distances.sort_values(
+                by="dlib_distance", ascending=True, ignore_index=True
+            )
+
             resnet_distances_norm = cluster_norm_distances.loc[:, resnet_cols]
+
+            # imgs list to be used at rank_error function
+            imgs = list(cluster_norm_distances.img1.unique())
+            shuffle(imgs)
 
             # Prepare DEAP
             toolbox = base.Toolbox()
@@ -548,6 +549,7 @@ def run_experiment(params_comb=None):
                 current_error_fun,
                 cluster_norm_distances=cluster_norm_distances,
                 resnet_distances_norm=resnet_distances_norm,
+                imgs=imgs,
             )
             toolbox.register("mate", tools.cxTwoPoint)
             toolbox.register("mutate", tools.mutFlipBit, indpb=current_indpb)
@@ -675,6 +677,7 @@ def run_experiment(params_comb=None):
                 resnet_distances_norm,
                 save_data=True,
                 output_files_folders=individuals_folder,
+                use_scipy=False,
             )
 
             with open(RESULTS_FILE, "a") as f:

@@ -164,7 +164,7 @@ def generate_results(distances, best_multipliers_lst, dlib_resnet_best_comb):
         resnet_distances_norm=distances.loc[:, dlib_resnet_best_comb.resnet_part],
         save_data=True,
         files_prepend=CHECK_RANK_PREPEND + datetime.now().strftime("%Y%m%d%H%M%S_"),
-        use_scipy=True,
+        use_scipy=False,
     )
 
     print(
