@@ -10,7 +10,7 @@ from time import time
 
 import numpy as np
 import pandas as pd
-from deap import base, creator, tools
+from deap import algorithms, base, creator, tools
 from scipy import stats
 
 from util._telegram import send_simple_message
@@ -172,6 +172,7 @@ def load_dlib_df_distances() -> pd.DataFrame:
 # Run the experiments
 # ======================================================================================================
 
+
 # Fitness Function
 def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
@@ -302,15 +303,19 @@ def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [(i / individual_sum) for i in individual]
 
+    cluster_norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
     cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
 
     # Pandas Like Error
     cluster_norm_distances.loc[
         :, "dlib_same_person"
-    ] = cluster_norm_distances.dlib_distance.apply(lambda c: 1 if c < 0.37 else 0)
+    ] = cluster_norm_distances.dlib_distance.apply(lambda c: 1 if c < 0.5 else 0)
     cluster_norm_distances.loc[
         :, "comb_same_person"
-    ] = cluster_norm_distances.combination.apply(lambda c: 1 if c < 0.37 else 0)
+    ] = cluster_norm_distances.combination.apply(lambda c: 1 if c < 0.5 else 0)
     cluster_norm_distances.loc[:, "error"] = (
         cluster_norm_distances.comb_same_person
         - cluster_norm_distances.dlib_same_person
@@ -411,7 +416,6 @@ def calc_rank(
 
 
 def run_experiment(params_comb=None):
-
     distances = load_dlib_df_distances()
     clusters = set(distances.img1_cluster.unique()).union(
         set(distances.img2_cluster.unique())
@@ -669,6 +673,219 @@ def run_experiment(params_comb=None):
                     )
 
             # Save results to files
+            json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
+            json.dump(bests, open(best_individuals_file, "w"))
+            min_rank, max_rank, median_rank, mean_rank = calc_rank(
+                best,
+                cluster_norm_distances,
+                resnet_distances_norm,
+                save_data=True,
+                output_files_folders=individuals_folder,
+                use_scipy=False,
+            )
+
+            with open(RESULTS_FILE, "a") as f:
+                tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"
+                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{NO_BEST_MAX_GENERATIONS},{best_generation},{last_min_fit}"
+                tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
+                f.write(tmp_line)
+
+        if params_experimented % 10 == 0:
+            print(
+                f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
+            )
+            _ = send_simple_message(
+                f"DLIB ResNET GA Experiments:  {params_experimented}/{len(params_comb)} {round(100*params_experimented/len(params_comb),2)}% | Spent {round((time()-params_start_time)//60,2)} min"
+            )
+
+
+def run_experiment_v2(params_comb=None):
+    distances = load_dlib_df_distances()
+    clusters = set(distances.img1_cluster.unique()).union(
+        set(distances.img2_cluster.unique())
+    )
+    clusters = sorted(clusters)
+
+    print("Distances data loaded")
+
+    # Individuals representation
+    resnet_cols = list(
+        filter(
+            lambda c: ("resnet" in c) and (c not in RESNET_COLS_TO_IGNORE),
+            distances.columns,
+        )
+    )
+
+    IND_SIZE = len(resnet_cols)
+
+    with open(RESULTS_FILE, "w") as f:
+        f.write(
+            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,no_best_max_gens,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
+        )
+
+    creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
+    creator.create("Individual", list, fitness=creator.FitnessMin)
+
+    # If no params is provided, use the available one by default
+    if params_comb is None:
+
+        def params_generator():
+            for max_generations in MAX_GENERATIONS:
+                for pop_size in POP_SIZE:
+                    for indpb in INDPB:
+                        for mutpb in MUTPB:
+                            for cxpb in CXPB:
+                                for error_fun_name in ERROR_FUNCTIONS_NAMES:
+                                    yield {
+                                        "cxpb": cxpb,
+                                        "mutpb": mutpb,
+                                        "indpb": indpb,
+                                        "pop_size": pop_size,
+                                        "max_generations": max_generations,
+                                        "error_fun": ERROR_FUNCTIONS[error_fun_name],
+                                    }
+
+        params_comb = list(params_generator())
+    else:
+        params_comb = list(
+            map(
+                lambda p: {**p, "error_fun": ERROR_FUNCTIONS[p["error_fun"]]},
+                params_comb,
+            )
+        )
+
+    send_simple_message(
+        f"Starting DLIB ResNET GA Experiments with {len(params_comb)} combination of parameters"
+    )
+
+    params_experimented = 0
+    exp_id = 0
+    for params in params_comb:
+        params_start_time = time()
+        params_experimented += 1
+        current_cxpb = params["cxpb"]
+        current_mutpb = params["mutpb"]
+        current_indpb = params["indpb"]
+        current_pop_size = params["pop_size"]
+        current_max_generations = params["max_generations"]
+        current_error_fun = params["error_fun"]
+
+        best = {}
+        for cluster in clusters:
+            exp_id += 1
+            cluster_distances = distances[
+                (distances.img1_cluster == cluster)
+                & (distances.img2_cluster == cluster)
+            ]
+
+            cluster_distances = cluster_distances.iloc[:SUB_SET_SIZE].reset_index(
+                drop=True
+            )
+
+            total_pairs = len(cluster_distances)
+            total_persons = cluster_distances.person1.unique().shape[0]
+            print(
+                f"""
+                    Experiment {exp_id} with {total_pairs} pairs of images of {total_persons} persons
+                    Cluster: {cluster}
+                    Error Function: {current_error_fun.__name__}
+                    CXPB: {current_cxpb}
+                    MUTPB: {current_mutpb}
+                    INDPB: {current_indpb}
+                    POP_SIZE: {current_pop_size}
+                    MAX_GENERATIONS: {current_max_generations}
+                    """
+            )
+
+            # Normalize distances inside cluster
+            cluster_norm_distances = cluster_distances.copy()
+            cluster_norm_distances = cluster_norm_distances.round(6)
+
+            # Normalize numerical columns
+            for col in resnet_cols + ["dlib_distance"]:
+                cluster_norm_distances[col] = (
+                    cluster_norm_distances[col] - cluster_norm_distances[col].min()
+                ) / (
+                    cluster_norm_distances[col].max()
+                    - cluster_norm_distances[col].min()
+                )
+
+            cluster_norm_distances = cluster_norm_distances.round(6)
+            cluster_norm_distances = cluster_norm_distances.sort_values(
+                by="dlib_distance", ascending=True, ignore_index=True
+            )
+
+            resnet_distances_norm = cluster_norm_distances.loc[:, resnet_cols]
+
+            # imgs list to be used at rank_error function
+            imgs = list(cluster_norm_distances.img1.unique())
+            shuffle(imgs)
+
+            # Prepare DEAP
+            toolbox = base.Toolbox()
+            toolbox.register("attr_float", random)
+            toolbox.register(
+                "individual",
+                tools.initRepeat,
+                creator.Individual,
+                toolbox.attr_float,
+                n=IND_SIZE,
+            )
+            toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+            toolbox.register(
+                "evaluate",
+                current_error_fun,
+                cluster_norm_distances=cluster_norm_distances,
+                resnet_distances_norm=resnet_distances_norm,
+                imgs=imgs,
+            )
+            toolbox.register("mate", tools.cxTwoPoint)
+            toolbox.register("mutate", tools.mutFlipBit, indpb=current_indpb)
+            toolbox.register("select", tools.selTournament, tournsize=3)
+
+            stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+            stats_size = tools.Statistics(len)
+            mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
+            mstats.register("max", np.max)
+            mstats.register("min", np.min)
+            mstats.register("mean", np.mean)
+            mstats.register("median", np.median)
+            mstats.register("stddev", np.std)
+
+            hof = tools.HallOfFame(maxsize=10)
+
+            # Start AG Search
+            start_time = time()
+            pop = toolbox.population(n=current_pop_size)
+            final_pop, logbook = algorithms.eaSimple(
+                population=pop,
+                toolbox=toolbox,
+                cxpb=current_cxpb,
+                mutpb=current_mutpb,
+                ngen=current_max_generations,
+                stats=mstats,
+                halloffame=hof,
+                verbose=True,
+            )
+
+            # Output files for best individuals
+            individuals_folder = RESULTS_FOLDER.joinpath(
+                f"{str(exp_id).zfill(5)}_individuals"
+            )
+            individuals_folder.mkdir(exist_ok=True)
+            best_individual_file = individuals_folder.joinpath("best_individual.json")
+            best_individuals_file = individuals_folder.joinpath("best_individuals.json")
+
+            # Save results to files
+            best = hof[0]
+            bests = [
+                        {
+                            "generation": 0,
+                            "fitness": 0,
+                            "best_data": dict(zip(resnet_cols, ind)),
+                        } for ind in hof
+                    ]
+
             json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
             json.dump(bests, open(best_individuals_file, "w"))
             min_rank, max_rank, median_rank, mean_rank = calc_rank(

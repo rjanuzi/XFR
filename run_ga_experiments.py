@@ -1,11 +1,10 @@
 import sys
 import traceback
 
-from experiments.dlib_resnet_ga_approximation import run_experiment
+from experiments.dlib_resnet_ga_approximation import run_experiment, run_experiment_v2
 from util._telegram import send_simple_message
 
 if __name__ == "__main__":
-
     params = None
 
     try:
@@ -24,7 +23,7 @@ if __name__ == "__main__":
         pass
 
     try:
-        run_experiment(params_comb=params)
+        run_experiment_v2(params_comb=params)
     except:
         print(traceback.format_exc())
         send_simple_message("Error in dlib_resnet_ga_approximation.py")
