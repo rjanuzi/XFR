@@ -64,13 +64,21 @@ MUTPB = [0.2]  # Probability for mutating an individual
 INDPB = [
     0.2,
 ]  # Probability for flipping a bit of an individual
-POP_SIZE = [100, 200, 400, 800]  # Population size
+POP_SIZE = [200, 400, 800]  # Population size
 MAX_GENERATIONS = [50, 100, 200, 400, 800, 1000]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
 
-RANK_ERROR_IMGS_LIMIT = 100
+RANK_ERROR_IMGS_LIMIT = 200
+RANK_ERROR_MIN_IMGS = 25
+
+STEP_ERROR_DLIB_THRESHOLD = 0.5
+
+RECOVER_FITNESS_IMGS_LIMIT = 200
+RECOVER_FITNESS_TOP_N = 25
+
+FITNESS_CACHING_LIMIT = 1000000
 
 
 def load_dlib_df_distances() -> pd.DataFrame:
@@ -165,12 +173,39 @@ def load_dlib_df_distances() -> pd.DataFrame:
         print("Saving distances to pickle file...")
         pickle.dump(distances, open(DISTANCES_FILES_PKL, "wb"))
 
-    return distances.round(6).reset_index(drop=True)
+    return distances.round(8).reset_index(drop=True)
 
 
 # ======================================================================================================
 # Run the experiments
 # ======================================================================================================
+
+# Caching the individuals for be faster
+INDIVIDUALS_FITNESS_CACHE = {}
+
+
+def individual_to_key(individual):
+    return ",".join((str(round(gene, 8)) for gene in individual))
+
+
+def clear_cached_fitness():
+    global INDIVIDUALS_FITNESS_CACHE
+    INDIVIDUALS_FITNESS_CACHE = {}
+
+
+def get_cached_fitness(individual):
+    individual_str = individual_to_key(individual=individual)
+    return INDIVIDUALS_FITNESS_CACHE.get(individual_str, None)
+
+
+def add_cached_fitness(individual, fitness):
+    global INDIVIDUALS_FITNESS_CACHE
+    individual_str = individual_to_key(individual=individual)
+    INDIVIDUALS_FITNESS_CACHE[individual_str] = fitness
+
+    if len(INDIVIDUALS_FITNESS_CACHE) > FITNESS_CACHING_LIMIT:
+        print("Caching limit. Clearing")
+        clear_cached_fitness()
 
 
 # Fitness Function
@@ -185,6 +220,10 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [i / individual_sum for i in individual]
 
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
     # Remove equal images
     norm_distances = cluster_norm_distances[
         cluster_norm_distances.img1 != cluster_norm_distances.img2
@@ -192,7 +231,7 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     # Calculate the Distance with the ResNet Combination
     norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
-    norm_distances.combination = norm_distances.combination.round(6)
+    norm_distances.combination = norm_distances.combination.round(8)
 
     # Sort by the Dlib Distance and the Combination Distance.
     # The distances are sorted by dlib by default
@@ -202,23 +241,84 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     corrs = []
     for img in imgs[:RANK_ERROR_IMGS_LIMIT]:
-        dlib_img_distances = norm_distances[norm_distances.img1 == img].reset_index(
-            drop=True
+        dlib_img2_sequence = (
+            norm_distances[norm_distances.img1 == img].reset_index(drop=True).img2
         )
-        comb_img_distances = by_comb_distances[
-            by_comb_distances.img1 == img
-        ].reset_index(drop=True)
 
-        tmp_corr = dlib_img_distances.img2.corr(
-            comb_img_distances.img2, method="kendall"
+        if len(dlib_img2_sequence) < RANK_ERROR_MIN_IMGS:
+            continue
+
+        comb_img2_sequence = (
+            by_comb_distances[by_comb_distances.img1 == img].reset_index(drop=True).img2
         )
+
+        tmp_corr = dlib_img2_sequence.corr(comb_img2_sequence, method="kendall")
 
         if not np.isnan(tmp_corr):
-            corrs.append(round(tmp_corr, 6))
+            corrs.append(round(tmp_corr, 8))
 
-    return (
-        round(np.mean(corrs)) * -1,
-    )  # The Search algorithm will try to minimize the error and we need to maximize the correlation
+    # The Search algorithm will try to minimize the error and we need to maximize the correlation
+    fitness = (round(np.mean(corrs), 8) * -1,)
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
+
+
+def recover_fitness(individual, cluster_norm_distances, resnet_distances_norm, imgs):
+    individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
+    individual = [i / individual_sum for i in individual]
+
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
+    # Remove equal images
+    norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
+    # Calculate the Distance with the ResNet Combination
+    norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    norm_distances.combination = norm_distances.combination.round(8)
+
+    # Sort by the Dlib Distance and the Combination Distance.
+    # The distances are sorted by dlib by default
+    by_comb_distances = norm_distances.sort_values(
+        by="combination", ascending=True, ignore_index=True
+    )
+
+    top_n_count = []
+    for img in imgs[:RECOVER_FITNESS_IMGS_LIMIT]:
+        dlib_img2_sequence = (
+            norm_distances[norm_distances.img1 == img]
+            .reset_index(drop=True)
+            .img2[:RECOVER_FITNESS_TOP_N]
+        )
+
+        if len(dlib_img2_sequence) < RECOVER_FITNESS_TOP_N:
+            continue
+
+        comb_img2_sequence = (
+            by_comb_distances[by_comb_distances.img1 == img]
+            .reset_index(drop=True)
+            .img2[:RECOVER_FITNESS_TOP_N]
+        )
+
+        top_n_count.append(
+            len(comb_img2_sequence[comb_img2_sequence.isin(dlib_img2_sequence)])
+        )
+
+    # The Search algorithm will try to minimize the error and we need to maximize the correlation
+    fitness = (round(np.mean(top_n_count), 8) * -1,)
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
 
 
 def mse(individual, cluster_norm_distances, resnet_distances_norm, imgs):
@@ -232,6 +332,14 @@ def mse(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [i / individual_sum for i in individual]
 
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
+    cluster_norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
     cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
     cluster_norm_distances.loc[:, "error"] = (
         cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
@@ -240,11 +348,16 @@ def mse(individual, cluster_norm_distances, resnet_distances_norm, imgs):
         cluster_norm_distances.error.abs() + 1
     ) ** 2  # Avoid squared of fractions
 
-    return (
+    # Shall return a tuple for compatibility with DEAP
+    fitness = (
         cluster_norm_distances[
             cluster_norm_distances.sqr_error != inf
         ].sqr_error.mean(),
-    )  # Shall return a tuple for compatibility with DEAP
+    )
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
 
 
 def mae(individual, cluster_norm_distances, resnet_distances_norm, imgs):
@@ -259,14 +372,27 @@ def mae(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [i / individual_sum for i in individual]
 
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
+    cluster_norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
     cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
     cluster_norm_distances.loc[:, "error"] = (
         cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
     )
 
-    return (
+    # Shall return a tuple for compatibility with DEAP
+    fitness = (
         cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().mean(),
-    )  # Shall return a tuple for compatibility with DEAP
+    )
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
 
 
 def abs_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
@@ -281,14 +407,65 @@ def abs_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [i / individual_sum for i in individual]
 
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
+    cluster_norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
     cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
     cluster_norm_distances.loc[:, "error"] = (
         cluster_norm_distances.combination - cluster_norm_distances.dlib_distance
     )
 
-    return (
+    # Shall return a tuple for compatibility with DEAP
+    fitness = (
         cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().sum(),
-    )  # Shall return a tuple for compatibility with DEAP
+    )
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
+
+
+def mape_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
+    """
+    Calculate the Absolute Error Sum of the individual as a measure of fitness
+    """
+
+    individual_sum = sum(individual)
+
+    if individual_sum == 0:
+        return (inf,)
+
+    individual = [i / individual_sum for i in individual]
+
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
+    cluster_norm_distances = cluster_norm_distances[
+        cluster_norm_distances.img1 != cluster_norm_distances.img2
+    ].copy()
+
+    cluster_norm_distances.loc[:, "combination"] = resnet_distances_norm.dot(individual)
+    cluster_norm_distances.loc[:, "error"] = (
+        np.fabs(
+            cluster_norm_distances.dlib_distance - cluster_norm_distances.combination
+        )
+        / cluster_norm_distances.dlib_distance
+    )
+
+    # Shall return a tuple for compatibility with DEAP
+    fitness = (
+        cluster_norm_distances[cluster_norm_distances.error != inf].error.mean(),
+    )
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
 
 
 def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
@@ -303,6 +480,10 @@ def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual = [(i / individual_sum) for i in individual]
 
+    cached_fitness = get_cached_fitness(individual)
+    if cached_fitness is not None:
+        return cached_fitness
+
     cluster_norm_distances = cluster_norm_distances[
         cluster_norm_distances.img1 != cluster_norm_distances.img2
     ].copy()
@@ -312,26 +493,37 @@ def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     # Pandas Like Error
     cluster_norm_distances.loc[
         :, "dlib_same_person"
-    ] = cluster_norm_distances.dlib_distance.apply(lambda c: 1 if c < 0.5 else 0)
+    ] = cluster_norm_distances.dlib_distance.apply(
+        lambda c: 1 if c < STEP_ERROR_DLIB_THRESHOLD else 0
+    )
     cluster_norm_distances.loc[
         :, "comb_same_person"
-    ] = cluster_norm_distances.combination.apply(lambda c: 1 if c < 0.5 else 0)
+    ] = cluster_norm_distances.combination.apply(
+        lambda c: 1 if c < STEP_ERROR_DLIB_THRESHOLD else 0
+    )
     cluster_norm_distances.loc[:, "error"] = (
         cluster_norm_distances.comb_same_person
         - cluster_norm_distances.dlib_same_person
     )
 
-    return (
+    # Shall return a tuple for compatibility with DEAP
+    fitness = (
         cluster_norm_distances[cluster_norm_distances.error != inf].error.abs().sum(),
-    )  # Shall return a tuple for compatibility with DEAP
+    )
+
+    add_cached_fitness(individual=individual, fitness=fitness)
+
+    return fitness
 
 
 ERROR_FUNCTIONS = {
     "mse": mse,
     "mae": mae,
     "abs_error": abs_error,
+    "mape": mape_error,
     "step_error": step_error,
     "rank_error": rank_error,
+    "recover_fitness": recover_fitness,
 }
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
@@ -378,21 +570,23 @@ def calc_rank(
     corrs_by_img = []
 
     for img in imgs:
-        dlib_img_distances = by_dlib_distances[
-            by_dlib_distances.img1 == img
-        ].reset_index(drop=True)
-        comb_img_distances = by_comb_distances[
-            by_comb_distances.img1 == img
-        ].reset_index(drop=True)
+        dlib_img2_sequence = (
+            by_dlib_distances[by_dlib_distances.img1 == img].reset_index(drop=True).img2
+        )
+
+        if len(dlib_img2_sequence) < RANK_ERROR_MIN_IMGS:
+            continue
+
+        comb_img2_sequence = (
+            by_comb_distances[by_comb_distances.img1 == img].reset_index(drop=True).img2
+        )
 
         if use_scipy:
             tmp_corr = stats.kendalltau(
-                x=dlib_img_distances.img2.tolist(), y=comb_img_distances.img2.tolist()
+                x=dlib_img2_sequence, y=comb_img2_sequence.tolist()
             ).correlation
         else:
-            tmp_corr = dlib_img_distances.img2.corr(
-                comb_img_distances.img2, method="kendall"
-            )
+            tmp_corr = dlib_img2_sequence.corr(comb_img2_sequence, method="kendall")
 
         if not np.isnan(tmp_corr):
             corrs.append(tmp_corr)
@@ -412,7 +606,12 @@ def calc_rank(
             output_path = output_files_folders.joinpath(files_prepend + "corrs.xlsx")
             pd.DataFrame(corrs_by_img).to_excel(output_path)
 
-    return np.min(corrs), np.max(corrs), np.median(corrs), np.mean(corrs)
+    return (
+        round(np.min(corrs), 8),
+        round(np.max(corrs), 8),
+        round(np.median(corrs), 8),
+        round(np.mean(corrs), 8),
+    )
 
 
 def run_experiment(params_comb=None):
@@ -488,6 +687,7 @@ def run_experiment(params_comb=None):
 
         best = {}
         for cluster in clusters:
+            clear_cached_fitness()
             exp_id += 1
             cluster_distances = distances[
                 (distances.img1_cluster == cluster)
@@ -515,7 +715,7 @@ def run_experiment(params_comb=None):
 
             # Normalize distances inside cluster
             cluster_norm_distances = cluster_distances.copy()
-            cluster_norm_distances = cluster_norm_distances.round(6)
+            cluster_norm_distances = cluster_norm_distances.round(8)
 
             # Normalize numerical columns
             for col in resnet_cols + ["dlib_distance"]:
@@ -526,7 +726,7 @@ def run_experiment(params_comb=None):
                     - cluster_norm_distances[col].min()
                 )
 
-            cluster_norm_distances = cluster_norm_distances.round(6)
+            cluster_norm_distances = cluster_norm_distances.round(8)
             cluster_norm_distances = cluster_norm_distances.sort_values(
                 by="dlib_distance", ascending=True, ignore_index=True
             )
@@ -720,7 +920,7 @@ def run_experiment_v2(params_comb=None):
 
     with open(RESULTS_FILE, "w") as f:
         f.write(
-            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,no_best_max_gens,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
+            "exp_id,cluster,error_function,total_pairs,total_persons,cxpb,mtpb,indpb,pop_size,max_generations,best_generation,best_fitness,min_rank,max_rank,median_rank,mean_rank,exec_time_sec\n"
         )
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))  # Error (minimize)
@@ -772,6 +972,7 @@ def run_experiment_v2(params_comb=None):
 
         best = {}
         for cluster in clusters:
+            clear_cached_fitness()
             exp_id += 1
             cluster_distances = distances[
                 (distances.img1_cluster == cluster)
@@ -839,20 +1040,20 @@ def run_experiment_v2(params_comb=None):
                 resnet_distances_norm=resnet_distances_norm,
                 imgs=imgs,
             )
-            toolbox.register("mate", tools.cxTwoPoint)
+
+            toolbox.register("mate", tools.cxSimulatedBinary, eta=0.3)
             toolbox.register("mutate", tools.mutFlipBit, indpb=current_indpb)
             toolbox.register("select", tools.selTournament, tournsize=3)
 
             stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
-            stats_size = tools.Statistics(len)
-            mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
+            mstats = tools.MultiStatistics(fitness=stats_fit)
             mstats.register("max", np.max)
             mstats.register("min", np.min)
             mstats.register("mean", np.mean)
             mstats.register("median", np.median)
             mstats.register("stddev", np.std)
 
-            hof = tools.HallOfFame(maxsize=10)
+            hof = tools.HallOfFame(maxsize=20)
 
             # Start AG Search
             start_time = time()
@@ -875,16 +1076,18 @@ def run_experiment_v2(params_comb=None):
             individuals_folder.mkdir(exist_ok=True)
             best_individual_file = individuals_folder.joinpath("best_individual.json")
             best_individuals_file = individuals_folder.joinpath("best_individuals.json")
+            log_file = individuals_folder.joinpath("evolution_log.json")
 
             # Save results to files
             best = hof[0]
             bests = [
-                        {
-                            "generation": 0,
-                            "fitness": 0,
-                            "best_data": dict(zip(resnet_cols, ind)),
-                        } for ind in hof
-                    ]
+                {
+                    "generation": 0,
+                    "fitness": 0,
+                    "best_data": dict(zip(resnet_cols, ind)),
+                }
+                for ind in hof
+            ]
 
             json.dump(dict(zip(resnet_cols, best)), open(best_individual_file, "w"))
             json.dump(bests, open(best_individuals_file, "w"))
@@ -897,9 +1100,12 @@ def run_experiment_v2(params_comb=None):
                 use_scipy=False,
             )
 
+            log = logbook.chapters["fitness"]
+            json.dump(log, open(log_file, "w"))
+
             with open(RESULTS_FILE, "a") as f:
                 tmp_line = f"{exp_id},{cluster},{current_error_fun.__name__},{total_pairs},{total_persons},{current_cxpb},{current_mutpb}"
-                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},{NO_BEST_MAX_GENERATIONS},{best_generation},{last_min_fit}"
+                tmp_line += f",{current_indpb},{current_pop_size},{current_max_generations},'na','na'"
                 tmp_line += f",{min_rank},{max_rank},{median_rank},{mean_rank},{int(time()-start_time)}\n"
                 f.write(tmp_line)
 
