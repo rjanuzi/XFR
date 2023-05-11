@@ -899,7 +899,7 @@ def run_experiment(params_comb=None):
             )
 
 
-def run_experiment_v2(params_comb=None):
+def run_experiment_v2(params_comb=None, verbose=False):
     distances = load_dlib_df_distances()
     clusters = set(distances.img1_cluster.unique()).union(
         set(distances.img2_cluster.unique())
@@ -1066,7 +1066,7 @@ def run_experiment_v2(params_comb=None):
                 ngen=current_max_generations,
                 stats=mstats,
                 halloffame=hof,
-                verbose=True,
+                verbose=verbose,
             )
 
             # Output files for best individuals
