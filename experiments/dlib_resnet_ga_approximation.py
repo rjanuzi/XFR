@@ -879,7 +879,7 @@ def run_experiment(params_comb=None):
                 best,
                 cluster_norm_distances,
                 resnet_distances_norm,
-                save_data=True,
+                save_data=False,
                 output_files_folders=individuals_folder,
                 use_scipy=False,
             )
@@ -1095,7 +1095,7 @@ def run_experiment_v2(params_comb=None, verbose=False):
                 best,
                 cluster_norm_distances,
                 resnet_distances_norm,
-                save_data=True,
+                save_data=False,
                 output_files_folders=individuals_folder,
                 use_scipy=False,
             )
