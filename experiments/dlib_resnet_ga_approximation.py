@@ -523,7 +523,7 @@ ERROR_FUNCTIONS = {
     "mape": mape_error,
     "step_error": step_error,
     "rank_error": rank_error,
-    "recover_fitness": recover_fitness,
+    # "recover_fitness": recover_fitness,
 }
 ERROR_FUNCTIONS_NAMES = list(ERROR_FUNCTIONS.keys())
 
