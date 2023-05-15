@@ -215,7 +215,7 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -268,7 +268,7 @@ def rank_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 def recover_fitness(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -327,7 +327,7 @@ def mse(individual, cluster_norm_distances, resnet_distances_norm, imgs):
     """
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -367,7 +367,7 @@ def mae(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -402,7 +402,7 @@ def abs_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -437,7 +437,7 @@ def mape_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [i / individual_sum for i in individual]
@@ -475,7 +475,7 @@ def step_error(individual, cluster_norm_distances, resnet_distances_norm, imgs):
 
     individual_sum = sum(individual)
 
-    if individual_sum == 0:
+    if individual_sum == 0 or any((i < 0 for i in individual)):
         return (inf,)
 
     individual = [(i / individual_sum) for i in individual]
