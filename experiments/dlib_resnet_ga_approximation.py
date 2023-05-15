@@ -60,12 +60,12 @@ RESULTS_FILE = RESULTS_FOLDER.joinpath("experiments_nb.csv")
 
 # AG Search Params
 CXPB = [0.3]  # Probability with which two individuals are crossed
-MUTPB = [0.2]  # Probability for mutating an individual
+MUTPB = [0.3]  # Probability for mutating an individual
 INDPB = [
     0.2,
 ]  # Probability for flipping a bit of an individual
 POP_SIZE = [200, 400, 800]  # Population size
-MAX_GENERATIONS = [50, 100, 200, 400, 800, 1000]  # Maximum number of generations
+MAX_GENERATIONS = [100, 200, 400, 800, 1000]  # Maximum number of generations
 
 SUB_SET_SIZE = 1000000  # Number of distances to consider
 NO_BEST_MAX_GENERATIONS = 20  # Reset pop if no improvement in the last N generations
