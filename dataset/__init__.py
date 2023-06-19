@@ -4,93 +4,59 @@ import numpy as np
 from pandas import DataFrame
 from PIL import Image
 
-DATASET_RAW_FOLDER = Path(Path(__file__).parent, "raw_images")
-DATASET_ALIGNED_FOLDER = Path(Path(__file__).parent, "aligned_images")
-DATASET_MASKS_FOLDER = Path(Path(__file__).parent, "masks")
-DATASET_LATENTS_FOLDER = Path(Path(__file__).parent, "latents")
-DATASET_GENERATED_FOLDER = Path(Path(__file__).parent, "generated_images")
-DATASET_MORPH_FOLDER = Path(Path(__file__).parent, "morphs")
-DATASET_SEG_IMG_FOLDER = Path(Path(__file__).parent, "seg_images")
-DATASET_SEG_MAP_FOLDER = Path(Path(__file__).parent, "seg_maps")
-DATASET_VGGFACE2_FOLDER = Path(Path(__file__).parent, "vggface2", "test")
+VGGFACE2_FOLDER = Path(Path(__file__).parent, "vggface2")
+LFW_FOLDER = Path(Path(__file__).parent, "lfw")
 
-DATASET_RAW_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_ALIGNED_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_MASKS_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_LATENTS_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_GENERATED_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_MORPH_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_SEG_IMG_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_SEG_MAP_FOLDER.mkdir(exist_ok=True, parents=True)
-DATASET_VGGFACE2_FOLDER.mkdir(exist_ok=True, parents=True)
+DATASETS = ["vggface2", "lfw"]
 
 DATASET_KIND_RAW = 1
 DATASET_KIND_ALIGNED = 2
-DATASET_KIND_MASKS = 3
-DATASET_KIND_LATENTS = 4
-DATASET_KIND_GENERATED = 5
-DATASET_KIND_MORPH = 6
-DATASET_KIND_SEG_IMG = 7
-DATASET_KIND_SEG_MAP = 8
-DATASET_KIND_VGGFACE2 = 9
+DATASET_KIND_SEG_IMG = 3
+DATASET_KIND_SEG_MAP = 4
+
+DATASET_FOLDER_MAP = {
+    "vggface2": VGGFACE2_FOLDER,
+    "lfw": LFW_FOLDER,
+}
 
 DATASET_KIND_MAP = {
-    DATASET_KIND_RAW: DATASET_RAW_FOLDER,
-    DATASET_KIND_ALIGNED: DATASET_ALIGNED_FOLDER,
-    DATASET_KIND_MASKS: DATASET_MASKS_FOLDER,
-    DATASET_KIND_LATENTS: DATASET_LATENTS_FOLDER,
-    DATASET_KIND_GENERATED: DATASET_GENERATED_FOLDER,
-    DATASET_KIND_MORPH: DATASET_MORPH_FOLDER,
-    DATASET_KIND_SEG_IMG: DATASET_SEG_IMG_FOLDER,
-    DATASET_KIND_SEG_MAP: DATASET_SEG_MAP_FOLDER,
-    DATASET_KIND_VGGFACE2: DATASET_VGGFACE2_FOLDER,
+    DATASET_KIND_RAW: "raw_images",
+    DATASET_KIND_ALIGNED: "aligned_images",
+    DATASET_KIND_SEG_IMG: "seg_images",
+    DATASET_KIND_SEG_MAP: "seg_maps",
 }
 
 DATASET_KIND_STR = {
     DATASET_KIND_RAW: "raw",
     DATASET_KIND_ALIGNED: "aligned",
-    DATASET_KIND_MASKS: "mask",
-    DATASET_KIND_LATENTS: "latent",
-    DATASET_KIND_GENERATED: "generated",
-    DATASET_KIND_MORPH: "morph",
     DATASET_KIND_SEG_IMG: "seg_img",
     DATASET_KIND_SEG_MAP: "seg_map",
-    DATASET_KIND_VGGFACE2: "vggface2",
 }
 
 
-def get_file_path(name: str, dataset_kind: int, file_extension: str = ".png") -> Path:
+def get_file_path(
+    name: str, dataset: str, dataset_kind: int, file_extension: str = ".png"
+) -> Path:
     try:
-        return Path(DATASET_KIND_MAP[dataset_kind], name + file_extension)
+        dataset_folder = DATASET_FOLDER_MAP[dataset]
+    except KeyError:
+        raise ValueError(f"Invalid dataset: {dataset}")
+
+    try:
+        return dataset_folder.joinpath(
+            DATASET_KIND_MAP[dataset_kind], name + file_extension
+        )
     except KeyError:
         raise ValueError(f"Invalid folder_kind: {dataset_kind}")
 
 
-def read_latent(name: str) -> np.ndarray:
-    return np.load(
-        get_file_path(
-            name=name, dataset_kind=DATASET_KIND_LATENTS, file_extension=".npy"
-        )
-    )
-
-
-def read_latents(names: list) -> np.ndarray:
-    latents = []
-    for name in names:
-        latents.append(read_latent(name=name))
-    return np.array(latents)
-
-
-def read_mask(name: str) -> Image:
-    return Image.open(
-        get_file_path(name=name, dataset_kind=DATASET_KIND_MASKS, file_extension=".png")
-    ).convert(mode="L")
-
-
-def read_aligned(name: str) -> Image:
+def read_aligned(name: str, dataset: str) -> Image:
     return Image.open(
         get_file_path(
-            name=name, dataset_kind=DATASET_KIND_ALIGNED, file_extension=".png"
+            name=name,
+            dataset=dataset,
+            dataset_kind=DATASET_KIND_ALIGNED,
+            file_extension=".png",
         )
     ).convert("RGB")
 
@@ -108,18 +74,21 @@ def gen_dataset_index(kind: str = None) -> DataFrame:
         ...
     """
     entries = []
-    for kind_idx, folder in DATASET_KIND_MAP.items():
-        kind_str = DATASET_KIND_STR[kind_idx]
-        for img_path in folder.iterdir():
-            if img_path.is_file():
-                entries.append(
-                    {
-                        "name": img_path.stem,
-                        "kind": kind_str,
-                        "extension": img_path.suffix,
-                        "img_path": str(img_path),
-                    }
-                )
+    for dataset in DATASETS:
+        for kind_idx, folder_appendix in DATASET_KIND_MAP.items():
+            folder = DATASET_FOLDER_MAP[dataset].joinpath(folder_appendix)
+            kind_str = DATASET_KIND_STR[kind_idx]
+            for img_path in folder.iterdir():
+                if img_path.is_file():
+                    entries.append(
+                        {
+                            "dataset": dataset,
+                            "name": img_path.stem,
+                            "kind": kind_str,
+                            "extension": img_path.suffix,
+                            "img_path": str(img_path),
+                        }
+                    )
 
     entries = DataFrame(entries)
 

@@ -4,4 +4,5 @@
 *.npy
 *.gif
 vggface2
+lfw.tgz
 aligned_images.zip
