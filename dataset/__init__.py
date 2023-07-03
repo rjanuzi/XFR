@@ -1,37 +1,108 @@
 from pathlib import Path
 
 import numpy as np
-from pandas import DataFrame
+import pandas as pd
 from PIL import Image
 
-VGGFACE2_FOLDER = Path(Path(__file__).parent, "vggface2")
-LFW_FOLDER = Path(Path(__file__).parent, "lfw")
+DATASET_LFW = "lfw"
+DATASET_VGGFACE2 = "vggface2"
+__DATASETS = [DATASET_LFW, DATASET_VGGFACE2]
 
-DATASETS = ["vggface2", "lfw"]
+DATASET_KIND_RAW = "raw"
+DATASET_KIND_ALIGNED = "aligned"
+DATASET_KIND_SEG_IMG = "segmented"
+DATASET_KIND_SEG_MAP = "segmentation_maps"
+__DATASET_KINDS = [
+    DATASET_KIND_RAW,
+    DATASET_KIND_ALIGNED,
+    DATASET_KIND_SEG_IMG,
+    DATASET_KIND_SEG_MAP,
+]
 
-DATASET_KIND_RAW = 1
-DATASET_KIND_ALIGNED = 2
-DATASET_KIND_SEG_IMG = 3
-DATASET_KIND_SEG_MAP = 4
+# Create Ensure all folders
+__ROOT_FOLDER = Path(__file__).parent
+for dataset in __DATASETS:
+    for kind in __DATASET_KINDS:
+        __ROOT_FOLDER.joinpath(dataset, kind).mkdir(parents=True, exist_ok=True)
 
-DATASET_FOLDER_MAP = {
-    "vggface2": VGGFACE2_FOLDER,
-    "lfw": LFW_FOLDER,
-}
+# Dataset index file
+___DATASET_IDX = __ROOT_FOLDER.joinpath("dataset_index.pickle")
 
-DATASET_KIND_MAP = {
-    DATASET_KIND_RAW: "raw_images",
-    DATASET_KIND_ALIGNED: "aligned_images",
-    DATASET_KIND_SEG_IMG: "seg_images",
-    DATASET_KIND_SEG_MAP: "seg_maps",
-}
 
-DATASET_KIND_STR = {
-    DATASET_KIND_RAW: "raw",
-    DATASET_KIND_ALIGNED: "aligned",
-    DATASET_KIND_SEG_IMG: "seg_img",
-    DATASET_KIND_SEG_MAP: "seg_map",
-}
+def get_dataset_index(recreate: bool = False) -> pd.DataFrame:
+    """
+    Generate the dataset index reference to improve image recovering performance.
+
+    In:
+        recreate: If True, recreate the index file.
+    Out:
+        Pandas DataFrame with the all dataset images references.
+    """
+    if recreate or not ___DATASET_IDX.exists():
+        print("Creating the datasets index file, this can take a couple of minutes...")
+        entries = []
+        for dataset in __DATASETS:
+            for kind in __DATASET_KINDS:
+                tmp_folder = __ROOT_FOLDER.joinpath(dataset, kind)
+                for img_path in tmp_folder.iterdir():
+                    if img_path.is_file():
+                        entries.append(
+                            {
+                                "dataset": dataset,
+                                "kind": kind,
+                                "person_name": img_path.stem,
+                                "extension": img_path.suffix,
+                                "img_path": str(img_path),
+                            }
+                        )
+
+        dataset_idx = pd.DataFrame(entries)
+
+        # Save the index file
+        dataset_idx.to_pickle(___DATASET_IDX)
+
+        print("Datasets index file created!")
+
+        return dataset_idx
+    else:
+        return pd.read_pickle(___DATASET_IDX)
+
+
+def gen_dataset_index(kind: str = None) -> pd.DataFrame:
+    """
+    Generate the dataset entries.
+    Out:
+        Pandas pd.DataFrame like:
+        name        |   Kind    | extension | img_path
+        rjanuzi     |   raw     | 'jpg      | './dataset/raw/rjanuzi.jpg'
+        rjanuzi     |   aligned | 'png'     | './dataset/aligned/rjanuzi.png'
+        rjanuzi     |   mask    | 'png'     | './dataset/mask/rjanuzi.png'
+        rjanuzi     |   latent  | 'npy'     | './dataset/latents/rjanuzi.npy'
+        ...
+    """
+    entries = []
+    for dataset in DATASETS:
+        for kind_idx, folder_appendix in DATASET_KIND_MAP.items():
+            folder = DATASET_FOLDER_MAP[dataset].joinpath(folder_appendix)
+            kind_str = DATASET_KIND_STR[kind_idx]
+            for img_path in folder.iterdir():
+                if img_path.is_file():
+                    entries.append(
+                        {
+                            "dataset": dataset,
+                            "name": img_path.stem,
+                            "kind": kind_str,
+                            "extension": img_path.suffix,
+                            "img_path": str(img_path),
+                        }
+                    )
+
+    entries = pd.DataFrame(entries)
+
+    if kind is not None:
+        return entries[entries["kind"] == kind]
+    else:
+        return entries
 
 
 def get_file_path(
@@ -61,44 +132,7 @@ def read_aligned(name: str, dataset: str) -> Image:
     ).convert("RGB")
 
 
-def gen_dataset_index(kind: str = None) -> DataFrame:
-    """
-    Generate the dataset entries.
-    Out:
-        Pandas DataFrame like:
-        name        |   Kind    | extension | img_path
-        rjanuzi     |   raw     | 'jpg      | './dataset/raw/rjanuzi.jpg'
-        rjanuzi     |   aligned | 'png'     | './dataset/aligned/rjanuzi.png'
-        rjanuzi     |   mask    | 'png'     | './dataset/mask/rjanuzi.png'
-        rjanuzi     |   latent  | 'npy'     | './dataset/latents/rjanuzi.npy'
-        ...
-    """
-    entries = []
-    for dataset in DATASETS:
-        for kind_idx, folder_appendix in DATASET_KIND_MAP.items():
-            folder = DATASET_FOLDER_MAP[dataset].joinpath(folder_appendix)
-            kind_str = DATASET_KIND_STR[kind_idx]
-            for img_path in folder.iterdir():
-                if img_path.is_file():
-                    entries.append(
-                        {
-                            "dataset": dataset,
-                            "name": img_path.stem,
-                            "kind": kind_str,
-                            "extension": img_path.suffix,
-                            "img_path": str(img_path),
-                        }
-                    )
-
-    entries = DataFrame(entries)
-
-    if kind is not None:
-        return entries[entries["kind"] == kind]
-    else:
-        return entries
-
-
-def ls_imgs_paths(kind: int = DATASET_KIND_RAW) -> list:
+def ls_imgs_paths(dataset: str, kind: int = DATASET_KIND_RAW) -> list:
     """
     List the images paths.
     Out: A list with the raw images paths.
