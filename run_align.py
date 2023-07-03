@@ -24,6 +24,10 @@ if __name__ == "__main__":
             output_size=__OUTPUT_SIZE,
             transform_size=__TRANSFORM_SIZE,
         )
+
+        # Update dataset index
+        _ = ds.get_dataset_index(recreate=True)
+
         send_simple_message("Alignment finished")
     except Exception as e:
         send_simple_message("Some error occurred while aligning images")

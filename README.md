@@ -27,13 +27,22 @@ When the module is imported by the first time, it will check for available datas
 
 In order to prepare the dataset of images for the experiments, we need to align the faces in the imagens, crop to a squared size and ensure file type.
 
-To accomplish this, the script **run_align.py** can be used. The script uses the **dataset** module to lookup the images and process them. The results are placed in the **aligned_images** folder inside of respective the dataset folder following the sabe structure of the **raw** folder (*person_name/imgs*).
+To accomplish this, the script **run_align.py** can be used. The script uses the **dataset** module to lookup the images and process them. The results are placed in the **aligned_images** folder inside of respective folder of the dataset following the same structure of the **raw** folder (*person_name/imgs*). The following image ilustrates the process result:
+
+![Face Aligment](readme_imgs/align_example.png)
 
 Under the hood, the script uses the [DLIB face detector model](http://dlib.net/python/index.html#dlib_pybind11.cnn_face_detection_model_v1) to identify the faces landmarks and align the images. The aligning function was extracted from the [FFHQ Dataset Pre-Processing](https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py) and transformed into a utilitary function for the project.
 
 ## Face Segmentation
 
-...
+Once all the images from dataset are well aligned and with the right sizes, we can advance to the face segmentation step, the face segmentation process will separate all the facial elements of the images (e.g. eyes, nose, mouth, etc.) into different images. The following image ilustrates the process result:
+
+![Face Segmentation](readme_imgs/segmentation_maps_example.png)
+
+To execute this task, the script **run_segmentation.py** can be used. The script uses the **dataset** module to lookup all the aligned images into the dataset folders and process them. The results are placed in the **segmented_images** folder inside of respective folder of the dataset following the same structure of the **raw** folder (*person_name/imgs*), the segmentation maps are also saved in the **segmentation_maps** folder, under the dataset folder following the same structure.
+
+To execute the face segmentation it is used a pre-trained model from the [BiSeNet](https://arxiv.org/abs/1808.00897) architecture.
+
 
 ## Distance Matrix Generation
 
