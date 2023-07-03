@@ -27,7 +27,9 @@ When the module is imported by the first time, it will check for available datas
 
 In order to prepare the dataset of images for the experiments, we need to align the faces in the imagens, crop to a squared size and ensure file type.
 
-To accomplish this, the script run_align.py can be used. The script uses the **dataset** module to lookup the images and process them. The results are placed in the "aligned_images" folder inside the dataset dataset folder.
+To accomplish this, the script **run_align.py** can be used. The script uses the **dataset** module to lookup the images and process them. The results are placed in the **aligned_images** folder inside of respective the dataset folder following the sabe structure of the **raw** folder (*person_name/imgs*).
+
+Under the hood, the script uses the [DLIB face detector model](http://dlib.net/python/index.html#dlib_pybind11.cnn_face_detection_model_v1) to identify the faces landmarks and align the images. The aligning function was extracted from the [FFHQ Dataset Pre-Processing](https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py) and transformed into a utilitary function for the project.
 
 ## Face Segmentation
 

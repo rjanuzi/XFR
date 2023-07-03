@@ -72,6 +72,10 @@ def get_dataset_index(recreate: bool = False, dataset: str = "all") -> pd.DataFr
         return dataset_idx.loc[dataset_idx["dataset"] == dataset]
 
 
+def get_raw_imgs_dataset_index() -> pd.DataFrame:
+    return get_dataset_index().loc[get_dataset_index()["kind"] == DATASET_KIND_RAW]
+
+
 def info():
     dataset_index = get_dataset_index()
     datasets = dataset_index.dataset.unique()
