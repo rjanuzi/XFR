@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from PIL import Image
 
@@ -29,7 +28,7 @@ for dataset in __DATASETS:
 ___DATASET_IDX = __ROOT_FOLDER.joinpath("dataset_index.pickle")
 
 
-def get_dataset_index(recreate: bool = False) -> pd.DataFrame:
+def get_dataset_index(recreate: bool = False, dataset: str = "all") -> pd.DataFrame:
     """
     Generate the dataset index reference to improve image recovering performance.
 
@@ -41,20 +40,21 @@ def get_dataset_index(recreate: bool = False) -> pd.DataFrame:
     if recreate or not ___DATASET_IDX.exists():
         print("Creating the datasets index file, this can take a couple of minutes...")
         entries = []
-        for dataset in __DATASETS:
+        for tmp_dataset in __DATASETS:
             for kind in __DATASET_KINDS:
-                tmp_folder = __ROOT_FOLDER.joinpath(dataset, kind)
-                for img_path in tmp_folder.iterdir():
-                    if img_path.is_file():
-                        entries.append(
-                            {
-                                "dataset": dataset,
-                                "kind": kind,
-                                "person_name": img_path.stem,
-                                "extension": img_path.suffix,
-                                "img_path": str(img_path),
-                            }
-                        )
+                tmp_folder = __ROOT_FOLDER.joinpath(tmp_dataset, kind)
+                for person_folder in tmp_folder.iterdir():
+                    for img_path in person_folder.iterdir():
+                        if img_path.is_file():
+                            entries.append(
+                                {
+                                    "dataset": tmp_dataset,
+                                    "kind": kind,
+                                    "person_name": person_folder.stem,
+                                    "extension": img_path.suffix,
+                                    "img_path": str(img_path),
+                                }
+                            )
 
         dataset_idx = pd.DataFrame(entries)
 
@@ -63,88 +63,65 @@ def get_dataset_index(recreate: bool = False) -> pd.DataFrame:
 
         print("Datasets index file created!")
 
+    else:
+        dataset_idx = pd.read_pickle(___DATASET_IDX)
+
+    if dataset == "all":
         return dataset_idx
     else:
-        return pd.read_pickle(___DATASET_IDX)
+        return dataset_idx.loc[dataset_idx["dataset"] == dataset]
 
 
-def gen_dataset_index(kind: str = None) -> pd.DataFrame:
-    """
-    Generate the dataset entries.
-    Out:
-        Pandas pd.DataFrame like:
-        name        |   Kind    | extension | img_path
-        rjanuzi     |   raw     | 'jpg      | './dataset/raw/rjanuzi.jpg'
-        rjanuzi     |   aligned | 'png'     | './dataset/aligned/rjanuzi.png'
-        rjanuzi     |   mask    | 'png'     | './dataset/mask/rjanuzi.png'
-        rjanuzi     |   latent  | 'npy'     | './dataset/latents/rjanuzi.npy'
-        ...
-    """
-    entries = []
-    for dataset in DATASETS:
-        for kind_idx, folder_appendix in DATASET_KIND_MAP.items():
-            folder = DATASET_FOLDER_MAP[dataset].joinpath(folder_appendix)
-            kind_str = DATASET_KIND_STR[kind_idx]
-            for img_path in folder.iterdir():
-                if img_path.is_file():
-                    entries.append(
-                        {
-                            "dataset": dataset,
-                            "name": img_path.stem,
-                            "kind": kind_str,
-                            "extension": img_path.suffix,
-                            "img_path": str(img_path),
-                        }
-                    )
-
-    entries = pd.DataFrame(entries)
-
-    if kind is not None:
-        return entries[entries["kind"] == kind]
-    else:
-        return entries
+def info():
+    dataset_index = get_dataset_index()
+    datasets = dataset_index.dataset.unique()
+    print(f"Datasets: {datasets}")
+    for ds in datasets:
+        filtered = dataset_index.loc[dataset_index["dataset"] == ds]
+        print(f"Dataset: {ds}")
+        print(f"\tPersons: {len(filtered.person_name.unique())}")
+        print(f"\tImages: {filtered.shape[0]}")
 
 
 def get_file_path(
-    name: str, dataset: str, dataset_kind: int, file_extension: str = ".png"
+    dataset: str,
+    kind: str,
+    person_name: str,
+    image_name: str,
+    file_extension: str = ".png",
 ) -> Path:
     try:
-        dataset_folder = DATASET_FOLDER_MAP[dataset]
+        return __ROOT_FOLDER.joinpath(
+            dataset, kind, person_name, image_name + file_extension
+        )
     except KeyError:
         raise ValueError(f"Invalid dataset: {dataset}")
 
-    try:
-        return dataset_folder.joinpath(
-            DATASET_KIND_MAP[dataset_kind], name + file_extension
-        )
-    except KeyError:
-        raise ValueError(f"Invalid folder_kind: {dataset_kind}")
 
-
-def read_aligned(name: str, dataset: str) -> Image:
+def read_aligned(dataset: str, person_name: str, image_name: str) -> Image:
     return Image.open(
         get_file_path(
-            name=name,
             dataset=dataset,
-            dataset_kind=DATASET_KIND_ALIGNED,
-            file_extension=".png",
+            kind=DATASET_KIND_ALIGNED,
+            person_name=person_name,
+            image_name=image_name,
         )
     ).convert("RGB")
 
 
-def ls_imgs_paths(dataset: str, kind: int = DATASET_KIND_RAW) -> list:
+def ls_imgs_paths(dataset: str, kind: str = DATASET_KIND_RAW) -> list:
     """
     List the images paths.
     Out: A list with the raw images paths.
     """
-    entries = gen_dataset_index()
-    return entries.loc[entries["kind"] == DATASET_KIND_STR[kind], "img_path"].tolist()
+    entries = get_dataset_index(dataset=dataset)
+    return entries.loc[entries["kind"] == kind, "img_path"].tolist()
 
 
-def ls_imgs_names(kind: int = DATASET_KIND_RAW) -> list:
+def ls_imgs_person_names(dataset: str, kind: str = DATASET_KIND_RAW) -> list:
     """
     List the images paths.
     Out: A list with the raw images paths.
     """
-    entries = gen_dataset_index()
-    return entries.loc[entries["kind"] == DATASET_KIND_STR[kind], "name"].tolist()
+    entries = get_dataset_index(dataset=dataset)
+    return entries.loc[entries["kind"] == kind, "person_name"].tolist()
