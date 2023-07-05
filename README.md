@@ -1,7 +1,8 @@
 ## Explanable Face Recognition
-![Python 3.9.12](https://img.shields.io/badge/python-3.9.12-green.svg?style=plastic)
-![TensorFlow 2.6.0](https://img.shields.io/badge/tensorflow-2.6-green.svg?style=plastic)
-![Anaconda 4.12.0](https://img.shields.io/badge/anaconda-4.12-green.svg?style=plastic)
+![Python 3.9.12](https://img.shields.io/badge/Python-3.9.12-green.svg?style=plastic)
+![TensorFlow 2.6.0](https://img.shields.io/badge/TensorFlow-2.6-green.svg?style=plastic)
+![PyTorch 1.10.1](https://img.shields.io/badge/PyTorch-1.10-green.svg?style=plastic)
+![Anaconda 4.12.0](https://img.shields.io/badge/Anaconda-4.12-green.svg?style=plastic)
 ![License CC BY-NC](https://img.shields.io/badge/license-CC_BY--NC-green.svg?style=plastic)
 
 # Dataset Ordanization
@@ -43,6 +44,7 @@ To execute this task, the script **run_segmentation.py** can be used. The script
 
 To execute the face segmentation it is used a pre-trained model from the [BiSeNet](https://arxiv.org/abs/1808.00897) architecture.
 
+Obs.: The BiSeNet model being used is implemented using PyTorch, so it is recommended to have a different environment to execute the segmentation process.
 
 ## Distance Matrix Generation
 

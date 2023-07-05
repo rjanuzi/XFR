@@ -1,60 +1,48 @@
+from pathlib import Path
 from time import time
 
+import dataset as ds
 from BiSeNet.face_seg import segment_images
-from dataset import (
-    DATASET_KIND_ALIGNED,
-    DATASET_KIND_SEG_IMG,
-    DATASET_KIND_SEG_MAP,
-    DATASET_KIND_STR,
-    gen_dataset_index,
-    get_file_path,
-)
 from util._telegram import send_simple_message
 
 # Get the list of imgs to segment, except the already segmented ones
-dataset_idx = gen_dataset_index()
-aligned_dataset = dataset_idx.loc[
-    dataset_idx["kind"] == DATASET_KIND_STR[DATASET_KIND_ALIGNED]
-]
-seg_map_dataset = dataset_idx.loc[
-    dataset_idx["kind"] == DATASET_KIND_STR[DATASET_KIND_SEG_MAP]
-]
+aligned_dataset = ds.get_aligned_imgs_dataset_index()
+seg_map_dataset = ds.get_seg_maps_dataset_index()
 
 # Select only rows that haven't been segmented yet
 aligned_dataset = aligned_dataset.merge(
-    seg_map_dataset, on="name", how="left", indicator=True
+    seg_map_dataset["img_path"],
+    on="img_path",
+    how="left",
+    indicator=True,
 )
 aligned_dataset = aligned_dataset.loc[aligned_dataset["_merge"] == "left_only"]
 
-# Based on the name of the persons, generate the expected folders structure to place the segmentation data
-output_maps_path_lst = (
-    aligned_dataset["name"]
-    .apply(
-        lambda name: get_file_path(
-            name=name, dataset_kind=DATASET_KIND_SEG_MAP, file_extension=".npy"
-        )
-    )
-    .tolist()
+# Generate the paths to save the segmentation maps and segmented images
+aligned_dataset["segmentation_map_path"] = aligned_dataset.img_path.apply(
+    lambda path: path.replace(ds.DATASET_KIND_ALIGNED, ds.DATASET_KIND_SEG_MAP)
 )
 
-output_imgs_path_lst = (
-    aligned_dataset["name"]
-    .apply(
-        lambda name: get_file_path(
-            name=name, dataset_kind=DATASET_KIND_SEG_IMG, file_extension=".png"
-        )
-    )
-    .tolist()
+aligned_dataset["segmentation_segmented_path"] = aligned_dataset.img_path.apply(
+    lambda path: path.replace(ds.DATASET_KIND_ALIGNED, ds.DATASET_KIND_SEG_IMG)
 )
 
-send_simple_message(f"Starting segmentation of {len(output_maps_path_lst)} images.")
+# Create output folders
+_ = aligned_dataset.segmentation_map_path.apply(
+    lambda path: Path(path).parent.mkdir(parents=True, exist_ok=True)
+)
+_ = aligned_dataset.segmentation_segmented_path.apply(
+    lambda path: Path(path).parent.mkdir(parents=True, exist_ok=True)
+)
+
+send_simple_message(f"Starting segmentation of {aligned_dataset.shape[0]} images.")
 
 start_time = time()
 try:
     segment_images(
-        input_path_lst=aligned_dataset["img_path_x"].tolist(),
-        output_maps_path_lst=output_maps_path_lst,
-        output_imgs_path_lst=output_imgs_path_lst,
+        input_path_lst=aligned_dataset["img_path"].tolist(),
+        output_maps_path_lst=aligned_dataset.segmentation_map_path.tolist(),
+        output_imgs_path_lst=aligned_dataset.segmentation_segmented_path.tolist(),
         save_imgs=True,
     )
     send_simple_message("Segmentation finished")

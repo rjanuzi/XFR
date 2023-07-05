@@ -76,6 +76,14 @@ def get_raw_imgs_dataset_index() -> pd.DataFrame:
     return get_dataset_index().loc[get_dataset_index()["kind"] == DATASET_KIND_RAW]
 
 
+def get_aligned_imgs_dataset_index() -> pd.DataFrame:
+    return get_dataset_index().loc[get_dataset_index()["kind"] == DATASET_KIND_ALIGNED]
+
+
+def get_seg_maps_dataset_index() -> pd.DataFrame:
+    return get_dataset_index().loc[get_dataset_index()["kind"] == DATASET_KIND_SEG_MAP]
+
+
 def info():
     dataset_index = get_dataset_index()
     datasets = dataset_index.dataset.unique()
